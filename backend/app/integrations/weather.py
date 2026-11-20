@@ -5,6 +5,7 @@ from datetime import datetime
 import httpx
 
 from ..config import get_settings
+from ..timeutil import clock
 
 CODES = {
     0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Foggy", 48: "Foggy",
@@ -60,7 +61,7 @@ def current() -> dict:
     for t, p in zip(hours.get("time", []), hours.get("precipitation_probability", [])):
         when = datetime.fromisoformat(t)
         if now and when > now and (p or 0) >= 50:
-            rain_at = when.strftime("%H:%M")
+            rain_at = clock(when, convert=False)  # Open-Meteo already gives local time
             break
 
     return {

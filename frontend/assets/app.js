@@ -6,7 +6,9 @@ const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const cat=window.MrBobCat;
 if(/Chrome\//.test(navigator.userAgent))document.documentElement.classList.add("chrome");
 
-let data=null,lang="auto",busy=false;
+let data=null,lang="auto",busy=false,wake=null,handsFree=false,wakeOn=false;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+try{wakeOn=!!localStorage.getItem("mrbob-wake")&&!!SR}catch(e){}
 try{lang=localStorage.getItem("mrbob-lang")||"auto"}catch(e){}
 
 /* ---------- api ---------- */
@@ -46,9 +48,14 @@ function render(d){
   $("#conns").innerHTML=d.connections.map(c=>`<div class="srow"><span class="app" style="background:${colors[c.name]||"#8e8e93"}">${esc(c.label[0])}</span><div><b>${esc(c.label)}</b><span>${esc(c.detail)}</span></div><button class="sw" role="switch" aria-label="${esc(c.label)}" aria-checked="${c.enabled}" data-name="${c.name}"></button></div>`).join("");
   $("#accounts").innerHTML=
     `<div class="srow"><span class="app" style="background:#4285f4">G</span><div><b>Google account</b><span>${d.google.connected?"Gmail and Calendar connected":d.google.ready?"Not connected":"Add Google keys to .env first"}</span></div>${d.google.ready?(d.google.connected?`<button class="chip" id="gOff">Disconnect</button>`:`<a class="chip linkbtn" href="/api/google/connect">Connect</a>`):""}</div>`+
-    `<div class="srow"><span class="app" style="background:#2aabee">T</span><div><b>Telegram</b><span>${d.telegram.ready?(d.telegram.chat_set?"Ready to message you":"Send /start to your bot to get your chat id"):"Add TELEGRAM_BOT_TOKEN to .env"}</span></div></div>`+
+    `<div class="srow"><span class="app" style="background:#2aabee">T</span><div><b>Telegram</b><span>${d.telegram.ready?(d.telegram.chat_set?"Linked to your account":"Open your bot, send /start and tap “Share my number”"):"Add TELEGRAM_BOT_TOKEN to .env"}</span></div></div>`+
+    `<div class="srow"><span class="app" style="background:#25d366">W</span><div><b>WhatsApp</b><span>${d.whatsapp.alerts||d.whatsapp.chat?[d.whatsapp.alerts?"Alerts on":"",d.whatsapp.chat?"Two-way chat on":""].filter(Boolean).join(" · "):"Add CALLMEBOT_APIKEY to .env for alerts"}</span></div></div>`+
+    `<div class="srow"><span class="app" style="background:#e0142f">B</span><div><b>“Hey Bob” hands-free</b><span>${SR?"Say “Hey Bob” while this page is open":"Needs Chrome, Edge or Safari"}</span></div><button class="sw" role="switch" id="wakeSw" aria-label="Hey Bob hands-free" aria-checked="${wakeOn}"></button></div>`+
     `<div class="srow"><span class="app" style="background:#d97757">AI</span><div><b>Brain</b><span>${d.brain.claude?"Claude":"Claude key missing"}${d.brain.backup?" · Groq backup ready":""}</span></div></div>`;
   $("#log").innerHTML=d.activity.length?d.activity.map(a=>`<div class="item"><span style="width:44px;flex:none;font-variant-numeric:tabular-nums">${esc(a.time)}</span><b>${esc(a.text)}</b></div>`).join(""):`<p class="empty">Nothing yet.</p>`;
+  const b=d.bkash,tk=x=>x==null?"—":"৳"+Number(x).toLocaleString(undefined,{maximumFractionDigits:2});
+  $("#bkIn").textContent=tk(b.in);$("#bkOut").textContent=tk(b.out);$("#bkBal").textContent=tk(b.balance);
+  $("#bkList").innerHTML=b.recent.length?b.recent.map(r=>`<div class="item"><span class="app" style="background:#e2136e">৳</span><div><b>${esc(r.label)}${r.party?" · "+esc(r.party):""}</b><span>${esc(r.when)}</span></div><span class="amt ${r.direction}">${r.direction==="in"?"+":"−"}${tk(r.amount)}</span></div>`).join(""):`<p class="empty">No bKash messages yet. Set up SMS forwarding (see README).</p>`;
   const c=d.cost;
   $("#money").innerHTML=`৳${c.total.toLocaleString()} <small>this month</small>`;
   $("#stack").innerHTML=c.items.filter(i=>i.bdt).map(i=>`<i style="width:${Math.min(100,i.bdt/c.budget*100)}%;background:${i.color}"></i>`).join("");
@@ -68,7 +75,7 @@ $("#remForm").addEventListener("submit",async e=>{e.preventDefault();const text=
 $("#sugs").addEventListener("click",async e=>{const b=e.target.closest("button[data-v]");if(!b)return;await post(`/suggestions/${b.dataset.id}/feedback`,{value:b.dataset.v});b.parentNode.querySelectorAll("button").forEach(x=>x.classList.toggle("chosen",x===b));toast("Thanks, I'll learn from that")});
 $("#newTips").addEventListener("click",async()=>{toast("Thinking of tips…");await post("/suggestions/refresh").catch(e=>toast(e.message));load()});
 $("#conns").addEventListener("click",async e=>{const b=e.target.closest(".sw");if(!b)return;const on=b.getAttribute("aria-checked")!=="true";b.setAttribute("aria-checked",on);await post(`/connections/${b.dataset.name}`,{enabled:on});load()});
-$("#accounts").addEventListener("click",async e=>{if(e.target.id==="gOff"){await post("/google/disconnect");load()}});
+$("#accounts").addEventListener("click",async e=>{if(e.target.id==="gOff"){await post("/google/disconnect");load()}if(e.target.id==="wakeSw"){setWake(!wakeOn);e.target.setAttribute("aria-checked",wakeOn)}});
 $("#briefNow").addEventListener("click",async()=>{toast("Sending your briefing to Telegram…");const r=await post("/briefing/morning").catch(e=>({text:""}));if(r.text){bubble("bob",r.text)}toast(r.text?"Briefing sent":"Couldn't make the briefing")});
 
 /* glass shine follows the pointer */
@@ -146,17 +153,36 @@ async function onRecorded(){
   fd.append("audio",blob,"voice."+ext);fd.append("seconds",seconds.toFixed(1));fd.append("language",lang);
   try{const r=await api("/voice",{method:"POST",body:fd});$("#vsaid").textContent=r.heard||"";$("#vreply").textContent=r.reply;
     if(r.heard){bubble("me",r.heard)}bubble("bob",r.reply);say(r.reply);if(cat)cat.hop(0);busy=false;
-    if(r.audio)await play(r.audio);else setState("idle");load()}
+    if(r.audio)await play(r.audio);else setState("idle");load();
+    if(handsFree)setTimeout(()=>{if(!busy&&!(rec&&rec.state==="recording"))closeVoice()},1800)}
   catch(e){busy=false;setState("idle");$("#vreply").textContent=e.message==="login"?"Please log in again.":"Sorry: "+e.message}
 }
-function openVoice(){voice.hidden=false;document.body.style.overflow="hidden";if(cat)cat.mount($("#vstage"));if(canRecord)listen();else setTimeout(()=>$("#vinp").focus(),50)}
-function closeVoice(){if(rec&&rec.state==="recording"){rec.onstop=null;rec.stop();stream&&stream.getTracks().forEach(t=>t.stop());rec=null}stopAudio();voice.hidden=true;document.body.style.overflow="";if(cat)cat.mount($("#stage"));if(!busy)setState("idle")}
+function openVoice(){stopWake();voice.hidden=false;document.body.style.overflow="hidden";if(cat)cat.mount($("#vstage"));if(canRecord)listen();else setTimeout(()=>$("#vinp").focus(),50)}
+function closeVoice(){if(rec&&rec.state==="recording"){rec.onstop=null;rec.stop();stream&&stream.getTracks().forEach(t=>t.stop());rec=null}stopAudio();voice.hidden=true;document.body.style.overflow="";if(cat)cat.mount($("#stage"));if(!busy)setState("idle");handsFree=false;setTimeout(startWake,500)}
 $("#talk").addEventListener("click",openVoice);$("#fab").addEventListener("click",openVoice);
 $("#vclose").addEventListener("click",closeVoice);$("#vmic").addEventListener("click",listen);
 addEventListener("keydown",e=>{if(e.key==="Escape"&&!voice.hidden)closeVoice()});
 $("#vform").addEventListener("submit",e=>{e.preventDefault();const v=$("#vinp").value;$("#vinp").value="";if(v.trim()){$("#vsaid").textContent=v;sendText(v,{speak:true})}});
 
+/* ---------- "Hey Bob" hands-free ---------- */
+function startWake(){
+  if(!SR||!wakeOn||!voice.hidden||busy)return;
+  try{wake=new SR();wake.continuous=true;wake.interimResults=true;wake.lang="en-US";
+    wake.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript.toLowerCase();
+      if(/\b(hey|hi|hay|ok|okay)[ ,]*(bob|bub|bobby|mr\.? bob)\b|হেই বব|হে বব/.test(t)){wake.onend=null;try{wake.stop()}catch(_){}wake=null;handsFree=true;setTimeout(openVoice,250);return}}};
+    wake.onend=()=>{wake=null;setTimeout(startWake,400)};
+    wake.onerror=ev=>{if(ev.error==="not-allowed"){setWake(false);toast("Microphone permission was blocked")}};
+    wake.start();$("#status").dataset.wake="1"}
+  catch(e){}
+}
+function stopWake(){if(wake){wake.onend=null;try{wake.stop()}catch(e){}wake=null}}
+function setWake(on){wakeOn=on;try{localStorage.setItem("mrbob-wake",on?"1":"")}catch(e){}if(on){startWake();toast("Say “Hey Bob” any time")}else stopWake()}
+
+/* installable app */
+if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+
 /* ---------- start ---------- */
 load().then(loadMessages);
+if(wakeOn)startWake();
 setInterval(()=>{if(!document.hidden&&$("#login").hidden)load()},30000);
 })();

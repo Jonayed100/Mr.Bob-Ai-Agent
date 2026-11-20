@@ -41,19 +41,31 @@ def day_bounds(offset_days: int = 0) -> tuple[datetime, datetime]:
     return start, start + timedelta(days=1)
 
 
-def hhmm(dt: datetime | None) -> str:
-    dt = local(dt)
-    return dt.strftime("%H:%M") if dt else ""
+def clock(dt: datetime | None, convert: bool = True) -> str:
+    """12-hour time like '3:05 PM'.
+
+    By default the value is converted to local time (naive = UTC, as stored in
+    the database). Pass convert=False for a value that is already local time.
+    """
+    dt = local(dt) if convert else dt
+    if not dt:
+        return ""
+    hour = dt.hour % 12 or 12
+    return f"{hour}:{dt.minute:02d} {'AM' if dt.hour < 12 else 'PM'}"
+
+
+# kept under the old name so every caller gets 12-hour time
+hhmm = clock
 
 
 def friendly(dt: datetime | None) -> str:
-    """'Today 15:00', 'Tomorrow 09:30' or '25 Nov 18:00'."""
+    """'Today 3:00 PM', 'Tomorrow 9:30 AM' or '25 Nov 6:00 PM'."""
     dt = local(dt)
     if not dt:
         return ""
     today = now_local().date()
     if dt.date() == today:
-        return f"Today {dt:%H:%M}"
+        return f"Today {clock(dt)}"
     if dt.date() == today + timedelta(days=1):
-        return f"Tomorrow {dt:%H:%M}"
-    return f"{dt.day} {dt:%b %H:%M}"
+        return f"Tomorrow {clock(dt)}"
+    return f"{dt.day} {dt:%b} {clock(dt)}"

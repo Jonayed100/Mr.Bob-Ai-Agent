@@ -10,22 +10,15 @@ from sqlalchemy.orm import Session
 from ..agent.brain import get_brain
 from ..agent.prompts import IMPORTANCE_PROMPT
 from ..config import get_settings
-from ..integrations import gcalendar, gmail, google_auth, telegram
+from ..integrations import gcalendar, gmail, google_auth
 from ..models import Alert, Reminder, is_enabled, kv_get, kv_set
 from ..timeutil import hhmm, now_local, now_utc, to_utc
 from .activity import record
 from .importance import clamp, rule_score
+from .notify import notify
 from .snapshot import refresh_weather
 
 log = logging.getLogger("mrbob")
-
-
-def notify(db: Session, text: str) -> None:
-    if is_enabled(db, "telegram"):
-        try:
-            telegram.send_text(text)
-        except Exception as exc:
-            log.warning("Telegram send failed: %s", exc)
 
 
 # ---------- Gmail ----------

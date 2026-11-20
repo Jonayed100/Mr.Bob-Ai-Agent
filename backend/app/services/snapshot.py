@@ -87,7 +87,17 @@ def today_snapshot(db: Session) -> dict:
         "today_events": events(db, 0),
         "tomorrow_events": events(db, 1),
         "reminders": [r for r in reminders(db) if not r["done"]],
+        "bkash_this_month": _bkash(db),
         "important_emails": [
             {"from": a["sender"], "subject": a["title"], "why": a["reason"]} for a in alerts(db) if a["source"] == "gmail"
         ],
     }
+
+
+def _bkash(db: Session) -> dict | None:
+    if not is_enabled(db, "bkash"):
+        return None
+    from .money import month_summary
+
+    s = month_summary(db)
+    return {"in": s["in"], "out": s["out"], "balance": s["balance"]} if s["count"] else None

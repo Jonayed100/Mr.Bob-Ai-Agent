@@ -1,8 +1,10 @@
 import base64
+import hashlib
+import hmac
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,9 +16,11 @@ from .db import get_db
 from .integrations import google_auth
 from .models import Activity, Connection, Message, Reminder, Suggestion, kv_get, kv_set
 from .security import COOKIE, MAX_AGE, make_token, password_ok, require_login
-from .services import briefing, costs, snapshot
+from .services import briefing, costs, money, snapshot
+from .services.notify import telegram_chat
+from .services.whatsapp_chat import handle_webhook
 from .services.activity import record
-from .timeutil import friendly, hhmm, now_local, to_utc
+from .timeutil import clock, friendly, hhmm, now_local, to_utc
 from .voice import stt, tts
 
 router = APIRouter(prefix="/api")
@@ -60,7 +64,7 @@ def dashboard(db: Session = Depends(get_db), settings: Settings = Depends(get_se
     activity = db.scalars(select(Activity).order_by(Activity.id.desc()).limit(25)).all()
     return {
         "owner": settings.owner_name,
-        "now": {"day": now.strftime("%A").upper(), "date": now.day, "time": now.strftime("%H:%M")},
+        "now": {"day": now.strftime("%A").upper(), "date": now.day, "time": clock(now)},
         "weather": snapshot.cached_weather() or snapshot.refresh_weather(),
         "events": snapshot.events(db, 0),
         "reminders": snapshot.reminders(db),
@@ -76,7 +80,9 @@ def dashboard(db: Session = Depends(get_db), settings: Settings = Depends(get_se
             for c in conns
         ],
         "google": {"ready": settings.google_ready, "connected": google},
-        "telegram": {"ready": settings.telegram_ready, "chat_set": bool(settings.telegram_chat_id)},
+        "telegram": {"ready": settings.telegram_ready, "chat_set": bool(telegram_chat(db))},
+        "whatsapp": {"alerts": settings.whatsapp_alerts_ready, "chat": settings.whatsapp_chat_ready},
+        "bkash": money.month_summary(db),
         "activity": [{"time": hhmm(a.created_at), "text": a.text} for a in activity],
         "cost": costs.month_summary(db),
         "language": kv_get(db, "language", "auto"),
@@ -238,4 +244,45 @@ def google_disconnect(db: Session = Depends(get_db)):
     google_auth.disconnect(db)
     record(db, "Disconnected Google", "settings")
     db.commit()
+    return {"ok": True}
+
+
+# ---------- bKash SMS (called by the SMS forwarder app on your phone) ----------
+@router.post("/sms")
+async def sms_webhook(request: Request, token: str = "", db: Session = Depends(get_db),
+                      settings: Settings = Depends(get_settings)):
+    if not settings.sms_webhook_token or not hmac.compare_digest(token, settings.sms_webhook_token):
+        raise HTTPException(403, "Bad token")
+    try:
+        body = await request.json()
+    except Exception:
+        body = dict(await request.form())
+    sender = str(body.get("from") or body.get("sender") or body.get("number") or "")
+    text = str(body.get("text") or body.get("message") or body.get("body") or body.get("content") or "")
+    tx = money.record_sms(db, sender, text)
+    db.commit()
+    return {"ok": True, "saved": bool(tx)}
+
+
+# ---------- WhatsApp Cloud API webhook ----------
+@router.get("/whatsapp/webhook")
+def whatsapp_verify(request: Request, settings: Settings = Depends(get_settings)):
+    q = request.query_params
+    if q.get("hub.mode") == "subscribe" and settings.whatsapp_verify_token and \
+            q.get("hub.verify_token") == settings.whatsapp_verify_token:
+        return PlainTextResponse(q.get("hub.challenge", ""))
+    raise HTTPException(403, "Verification failed")
+
+
+@router.post("/whatsapp/webhook")
+async def whatsapp_incoming(request: Request, settings: Settings = Depends(get_settings)):
+    raw = await request.body()
+    if settings.whatsapp_app_secret:
+        expected = "sha256=" + hmac.new(settings.whatsapp_app_secret.encode(), raw, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, request.headers.get("x-hub-signature-256", "")):
+            raise HTTPException(403, "Bad signature")
+    try:
+        handle_webhook(await request.json())
+    except Exception:
+        pass  # always answer 200 so Meta doesn't keep retrying
     return {"ok": True}

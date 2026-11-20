@@ -8,10 +8,10 @@ from ..agent.brain import get_brain
 from ..agent.language import language_rule
 from ..agent.prompts import BRIEFING_PROMPT, SUGGESTIONS_PROMPT
 from ..config import get_settings
-from ..integrations import telegram
-from ..models import Suggestion, is_enabled, kv_get
+from ..models import Suggestion, kv_get
 from ..voice.tts import speak_sync
 from .activity import record
+from .notify import notify
 from .snapshot import today_snapshot
 
 log = logging.getLogger("mrbob")
@@ -55,12 +55,12 @@ def send_briefing(db: Session, kind: str = "morning") -> str:
     )
     if not text:
         return ""
-    if is_enabled(db, "telegram"):
-        try:
-            title = "☀️ Good morning!" if kind == "morning" else "🌙 Today's wrap-up"
-            telegram.send_text(f"{title}\n\n{text}")
-            telegram.send_voice(speak_sync(text, language), caption=title)
-        except Exception as exc:
-            log.warning("Briefing send failed: %s", exc)
+    title = "☀️ Good morning!" if kind == "morning" else "🌙 Today's wrap-up"
+    try:
+        voice = speak_sync(text, language)
+    except Exception as exc:
+        log.warning("Briefing voice failed: %s", exc)
+        voice = b""
+    notify(db, f"{title}\n\n{text}", voice=voice, caption=title)
     record(db, f"Sent your {kind} briefing", "briefing")
     return text

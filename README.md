@@ -15,8 +15,13 @@ Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail a
 | Weather and air | Hourly check (Open-Meteo, free). Warns about rain and unhealthy air. |
 | Reminders | "Remind me to call Ammu at 8 PM" works by voice, text or Telegram. |
 | Suggestions | Every 3 hours he writes up to 3 practical tips. Mark them Useful / Not useful and he learns. |
-| Briefings | Morning briefing (7:00) and evening wrap-up (21:30) on Telegram, as text and a voice note. |
-| Voice | Siri-style voice screen on the dashboard, plus Telegram voice notes. |
+| Briefings | Morning briefing (7:00 AM) and evening wrap-up (9:30 PM) on Telegram and WhatsApp, with a voice note on Telegram. |
+| Voice | Siri-style voice screen on the dashboard, plus Telegram and WhatsApp voice notes. |
+| "Hey Bob" | Hands-free mode: say "Hey Bob" while the dashboard is open and he starts listening. |
+| WhatsApp | Free alerts to your own number (CallMeBot), plus optional two-way chat with the WhatsApp Cloud API. |
+| bKash | Your phone forwards bKash SMS; Mr. Bob tracks money in and out, your balance, and warns you when it's low. |
+| Phone app | Install the dashboard on your home screen; it opens full-screen and works on weak connections. |
+| 12-hour time | Every time is shown and spoken as 12-hour (3:00 PM). |
 | Email drafts | He can write a Gmail draft for you. He never sends email or pays for anything himself. |
 | Dashboard | iOS 26 "Liquid Glass" style, with a 3D cat, today's widgets, chat, connections, activity log and a live monthly cost card. Can be added to your phone's home screen. |
 
@@ -78,9 +83,16 @@ If Claude or OpenAI are down or out of credit, Mr. Bob quietly switches to Groq.
 ### 1d. Telegram bot
 1. In Telegram, open **@BotFather** and send `/newbot`.
 2. Name it (for example `Mr. Bob`) and pick a username ending in `bot`.
-3. Copy the token into `TELEGRAM_BOT_TOKEN`. Leave `TELEGRAM_CHAT_ID` empty for now (Step 5 fills it).
+3. Copy the token into `TELEGRAM_BOT_TOKEN`. Leave `TELEGRAM_CHAT_ID` empty: Mr. Bob links your account himself (Step 3).
+4. Make sure `OWNER_PHONE` is your number (`+8801787361208`).
 
-### 1e. Google: Gmail and Calendar
+### 1e. WhatsApp alerts (free)
+1. Go to **callmebot.com → WhatsApp** and save their bot number in your phone contacts (the number is on that page; it can change).
+2. From your WhatsApp (`+8801787361208`), send it: `I allow callmebot to send me messages`
+3. It replies with your **API key**. Put it in `CALLMEBOT_APIKEY`.
+From then on every alert and briefing also arrives on your WhatsApp. This free service is for personal use only, which is exactly this.
+
+### 1f. Google: Gmail and Calendar
 1. Go to **console.cloud.google.com** and create a project called `Mr Bob`.
 2. **APIs & Services → Library**: enable **Gmail API** and **Google Calendar API**.
 3. **OAuth consent screen**: User type **External**. App name `Mr. Bob`, your email as support and developer contact. Save.
@@ -125,8 +137,8 @@ Run the tests any time with `pytest`.
 ## Step 3. Connect Google and Telegram
 
 1. On the dashboard, go to **Settings → Google account → Connect**. Sign in, allow access, and you come back to the dashboard. Gmail and Calendar now fill in.
-2. In Telegram, open your bot and send `/start`. It replies with **your chat id**. Put that number in `TELEGRAM_CHAT_ID` in `.env` and restart Mr. Bob.
-3. Send the bot "hi" or a voice note. He answers, and from now on alerts and briefings arrive there. Only your chat id gets answers; anyone else is ignored.
+2. In Telegram, open your bot and send `/start`. Tap **📱 Share my number**. If it matches `OWNER_PHONE`, he replies **Linked! ✅**. Nothing to edit, no restart.
+3. Send the bot "hi" or a voice note. He answers, and from now on alerts and briefings arrive there. Anyone else who finds your bot is ignored.
 
 ---
 
@@ -168,7 +180,7 @@ docker compose up -d --build
 What happens:
 - `bob` is the app. `caddy` gets a free HTTPS certificate for your domain automatically.
 - After a minute, open **https://bob.yourdomain.com** on your phone or laptop.
-- Add the server redirect URI from Step 1e if you haven't, then connect Google again from the online dashboard.
+- Add the server redirect URI from Step 1f if you haven't, then connect Google again from the online dashboard.
 
 Useful commands:
 ```bash
@@ -184,6 +196,38 @@ Open the dashboard in your phone's browser → **Share / menu → Add to Home Sc
 
 ---
 
+## Step 5. Extras
+
+### WhatsApp chat (optional, two-way)
+CallMeBot only *sends* to you. To also *talk* to Mr. Bob on WhatsApp:
+1. Go to **developers.facebook.com → My Apps → Create app**, choose the WhatsApp use case, and connect a business portfolio.
+2. In **WhatsApp → API Setup** you get a free **test number**. Add `+8801787361208` as an allowed recipient.
+3. Copy the **temporary access token** into `WHATSAPP_TOKEN` (later create a permanent System User token) and the **Phone number ID** into `WHATSAPP_PHONE_NUMBER_ID`.
+4. **WhatsApp → Configuration → Webhook**: Callback URL `https://bob.yourdomain.com/api/whatsapp/webhook`, Verify token = the word you put in `WHATSAPP_VERIFY_TOKEN`. Click **Verify and save**, then subscribe to **messages**.
+5. Save Mr. Bob's WhatsApp number in your phone and message him. He answers text and voice notes, only from your number.
+
+Cost: messages *you* send are free. Since 1 October 2026 Meta charges for replies, but each number gets a free monthly allowance of service messages (1,000 at the time of writing), far more than one person uses.
+
+### bKash tracking (SMS forwarding)
+Mr. Bob can't read your SMS by himself; your phone forwards bKash messages to him.
+1. Put a long random word in `SMS_WEBHOOK_TOKEN` and restart.
+2. **Android:** install an SMS-to-webhook forwarder app from the Play Store (search "SMS forwarder webhook"). Make a rule:
+   - Sender contains `bKash`
+   - Method `POST`, URL `https://bob.yourdomain.com/api/sms?token=YOUR_TOKEN`
+   - Body JSON: `{"from": "<sender>", "text": "<message>"}` (use the app's own placeholders for sender and message)
+3. **iPhone:** Shortcuts → Automation → **Message**, sender bKash → action **Get contents of URL** (POST, same URL, JSON with `from` and `text`).
+4. Send yourself a small bKash amount to test. It appears in **bKash this month** on the dashboard.
+
+He understands received money, send money, cash in, cash out, payments, mobile recharge and bill payments. He warns you when the balance drops under `BKASH_LOW_BALANCE_BDT` or when you receive more than `BKASH_BIG_AMOUNT_BDT`, and you can ask him "bKash e koto taka ache?". Your SMS stay on your own server.
+
+### "Hey Bob" hands-free
+**Settings → "Hey Bob" hands-free → on.** While the dashboard is open (laptop on the desk, or the app on your phone), say **"Hey Bob"**. The voice screen opens, he listens, answers out loud, and goes back to waiting. This uses the browser's built-in speech recognition (Chrome, Edge or Safari) and only works while the page is open. A true always-on "Hey Bob" needs a small device such as a Raspberry Pi, which is a later project.
+
+### Install as a phone app
+Open the dashboard in Chrome (Android) or Safari (iPhone) → **Install app / Add to Home Screen**. He gets his own icon, opens full-screen, and still opens on a weak connection.
+
+---
+
 ## Monthly cost (target ৳2,700)
 
 | Item | About | Paid with |
@@ -193,7 +237,7 @@ Open the dashboard in your phone's browser → **Share / menu → Add to Home Sc
 | OpenAI speech-to-text | ৳350 | USD card, prepaid |
 | Domain | ৳150 (per month, paid yearly) | bKash |
 | 15% VAT on USD payments | ৳140 | added by your bank |
-| Voice, Telegram, Groq backup, weather, database | ৳0 | — |
+| Voice, Telegram, WhatsApp alerts, bKash tracking, Groq backup, weather, database | ৳0 | — |
 
 The dashboard's **Monthly cost** card shows real spending: every Claude and speech-to-text call is recorded. Things that keep it low:
 - Keyword rules decide most emails without the AI.
@@ -218,15 +262,17 @@ All in `.env` (restart after changing):
 |---|---|
 | Dashboard says "Can't reach Mr. Bob" | `docker compose logs bob` and look for the error. Usually a typo in `.env`. |
 | Google says `redirect_uri_mismatch` | The URI in Google Cloud must exactly equal `PUBLIC_URL` + `/api/google/callback`. |
-| Gmail stopped after a week | The Google app is still in Testing mode. Publish it (Step 1e), then reconnect. |
+| Gmail stopped after a week | The Google app is still in Testing mode. Publish it (Step 1f), then reconnect. |
 | Mic button missing | The page must be HTTPS (or localhost), and the browser must allow the microphone. |
-| Telegram silent | Check `TELEGRAM_CHAT_ID`, and that Telegram is switched on in Settings. |
+| Telegram silent | Send `/start` and share your number again; check `OWNER_PHONE` and that Telegram is on in Settings. |
+| No WhatsApp alerts | Check `CALLMEBOT_APIKEY` and `OWNER_PHONE`; redo the CallMeBot activation message. |
+| bKash card empty | Check the forwarder app's URL and token; `docker compose logs bob` shows each `/api/sms` call. |
 | Replies say "my brain is offline" | Check `ANTHROPIC_API_KEY` and your Claude credit, and add `GROQ_API_KEY` as a backup. |
 
 ## Ideas for later
-- "Hey Bob" wake word with a small always-on device (Raspberry Pi + openWakeWord).
-- bKash SMS and WhatsApp alerts.
-- A native phone app.
+- Always-on "Hey Bob" on a small device (Raspberry Pi with a custom wake word).
+- Nagad and bank SMS tracking.
+- A native phone app in the stores.
 
 ---
 

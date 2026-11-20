@@ -98,11 +98,29 @@ class KeyValue(Base):
     value: Mapped[str] = mapped_column(Text, default="")
 
 
+class Transaction(Base):
+    """A bKash transaction read from an SMS."""
+
+    __tablename__ = "transactions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30))  # received / send_money / cash_out / payment / bill / recharge / cash_in
+    direction: Mapped[str] = mapped_column(String(3))  # in / out
+    amount: Mapped[float] = mapped_column(Float, default=0)
+    fee: Mapped[float] = mapped_column(Float, default=0)
+    balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    party: Mapped[str] = mapped_column(String(120), default="")
+    trx_id: Mapped[str] = mapped_column(String(40), default="", index=True)
+    raw: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 DEFAULT_CONNECTIONS = [
     ("gmail", "Gmail", "Checks new mail regularly", True, 1),
     ("calendar", "Google Calendar", "Today and tomorrow", True, 2),
     ("weather", "Weather", "Rain and air quality", True, 3),
-    ("telegram", "Telegram", "Sends you alerts and briefings", True, 4),
+    ("telegram", "Telegram", "Alerts, briefings and chat", True, 4),
+    ("whatsapp", "WhatsApp", "Alerts and chat", True, 5),
+    ("bkash", "bKash SMS", "Tracks money in and out", True, 6),
 ]
 
 

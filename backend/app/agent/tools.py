@@ -59,6 +59,11 @@ TOOL_SPECS = [
         "input_schema": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]},
     },
     {
+        "name": "get_bkash_summary",
+        "description": "This month's bKash money in and out, fees, current balance and recent transactions.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "create_email_draft",
         "description": "Save an email draft in Gmail for the user to review and send himself. Never sends.",
         "input_schema": {
@@ -143,6 +148,14 @@ class ToolRunner:
         r.done = True
         record(self.db, f"Completed: {r.text}", "reminder")
         return {"ok": True}
+
+    def _get_bkash_summary(self):
+        from ..services.money import month_summary
+
+        if not is_enabled(self.db, "bkash"):
+            raise RuntimeError("bKash tracking is switched off on the dashboard")
+        record(self.db, "Checked your bKash", "bkash")
+        return month_summary(self.db)
 
     def _create_email_draft(self, to: str, subject: str, body: str):
         draft_id = gmail.create_draft(self._creds("gmail"), to, subject, body)

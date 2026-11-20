@@ -44,9 +44,26 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
 
+    # your phone number (international format), used to recognise you on Telegram and WhatsApp
+    owner_phone: str = ""
+
     # Telegram
     telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
+    telegram_chat_id: str = ""  # optional: filled in automatically when you share your contact
+
+    # WhatsApp alerts (free, one-way) via CallMeBot
+    callmebot_apikey: str = ""
+    # WhatsApp two-way chat (optional) via Meta WhatsApp Cloud API
+    whatsapp_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    whatsapp_verify_token: str = ""
+    whatsapp_app_secret: str = ""  # optional: checks that webhook calls really come from Meta
+    whatsapp_graph_version: str = "v21.0"
+
+    # bKash SMS tracking
+    sms_webhook_token: str = ""
+    bkash_low_balance_bdt: int = 500
+    bkash_big_amount_bdt: int = 5000
 
     # schedule
     gmail_check_minutes: int = 10
@@ -75,6 +92,14 @@ class Settings(BaseSettings):
     @property
     def telegram_ready(self) -> bool:
         return bool(self.telegram_bot_token)
+
+    @property
+    def whatsapp_alerts_ready(self) -> bool:
+        return bool(self.callmebot_apikey and self.owner_phone)
+
+    @property
+    def whatsapp_chat_ready(self) -> bool:
+        return bool(self.whatsapp_token and self.whatsapp_phone_number_id)
 
 
 @lru_cache

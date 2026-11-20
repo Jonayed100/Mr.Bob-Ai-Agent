@@ -1,21 +1,60 @@
 """Talk to Mr. Bob from Telegram: text messages and voice notes.
 
 Runs in a background thread with long polling, so no webhook or open port is needed.
-Only the owner's chat (TELEGRAM_CHAT_ID) gets answers.
+
+Linking your account: send /start, then tap "Share my number". If the number
+matches OWNER_PHONE, Mr. Bob remembers this chat as yours. Anyone else is ignored.
 """
 
+import json
 import logging
 import threading
 import time
+
+import httpx
 
 from ..agent.brain import get_brain
 from ..config import get_settings
 from ..db import session_scope
 from ..integrations import telegram
+from ..integrations.whatsapp import digits
 from ..models import is_enabled, kv_get, kv_set
+from ..services.activity import record
+from ..services.notify import telegram_chat
 from ..voice import stt, tts
 
 log = logging.getLogger("mrbob")
+
+
+def _ask_for_contact(chat_id: str) -> None:
+    s = get_settings()
+    keyboard = {"keyboard": [[{"text": "📱 Share my number", "request_contact": True}]],
+                "resize_keyboard": True, "one_time_keyboard": True}
+    httpx.post(
+        f"https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage",
+        data={"chat_id": chat_id, "text": "Hi! I'm Mr. Bob 🐱\nTap the button below so I can check it's really you.",
+              "reply_markup": json.dumps(keyboard)},
+        timeout=20,
+    )
+
+
+def _link_owner(msg: dict, chat_id: str) -> None:
+    """The user shared a contact: link the chat if it is his own number and it matches OWNER_PHONE."""
+    s = get_settings()
+    contact = msg.get("contact") or {}
+    own = contact.get("user_id") == (msg.get("from") or {}).get("id")
+    matches = s.owner_phone and digits(contact.get("phone_number", "")).endswith(digits(s.owner_phone)[-10:])
+    remove = json.dumps({"remove_keyboard": True})
+    if own and matches:
+        with session_scope() as db:
+            kv_set(db, "telegram_chat_id", chat_id)
+            record(db, "Linked your Telegram account", "settings")
+        httpx.post(f"https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage",
+                   data={"chat_id": chat_id, "text": "Linked! ✅ From now on I'll message you here. Send me text or a voice note any time.",
+                         "reply_markup": remove}, timeout=20)
+    else:
+        httpx.post(f"https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage",
+                   data={"chat_id": chat_id, "text": "Sorry, I only work for my owner.", "reply_markup": remove}, timeout=20)
 
 
 def _handle(update: dict) -> None:
@@ -24,13 +63,19 @@ def _handle(update: dict) -> None:
     chat_id = str(msg.get("chat", {}).get("id", ""))
     if not chat_id:
         return
-    if not s.telegram_chat_id:
-        telegram.send_text(
-            f"Hi! I'm Mr. Bob. Your chat id is {chat_id}.\nPut TELEGRAM_CHAT_ID={chat_id} in the .env file and restart me.",
-            chat_id,
-        )
+
+    with session_scope() as db:
+        owner_chat = telegram_chat(db)
+
+    if not owner_chat:
+        if msg.get("contact"):
+            _link_owner(msg, chat_id)
+        elif s.owner_phone:
+            _ask_for_contact(chat_id)
+        else:
+            telegram.send_text(f"Your chat id is {chat_id}. Put OWNER_PHONE (or TELEGRAM_CHAT_ID={chat_id}) in .env.", chat_id)
         return
-    if chat_id != s.telegram_chat_id:
+    if chat_id != owner_chat:
         return  # not the owner: stay quiet
 
     with session_scope() as db:
@@ -52,7 +97,7 @@ def _handle(update: dict) -> None:
         if not text:
             return
         if text == "/start":
-            telegram.send_text("Hi Jonayed! Mr. Bob here. Send me a message or a voice note. 🐱", chat_id)
+            telegram.send_text(f"Hi {s.owner_name}! Mr. Bob here. Send me a message or a voice note. 🐱", chat_id)
             return
         answer = get_brain().reply(db, text, language=language, channel="telegram")
         telegram.send_text(answer, chat_id)
