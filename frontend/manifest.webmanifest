@@ -1,0 +1,10 @@
+{
+  "name": "Mr. Bob",
+  "short_name": "Mr. Bob",
+  "description": "Your personal AI agent. A Project Aethrix Work.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3eef2",
+  "theme_color": "#e0142f",
+  "icons": [{ "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
