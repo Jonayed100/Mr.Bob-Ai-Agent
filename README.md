@@ -188,28 +188,17 @@ This keeps Mr. Bob running 24/7 for ৳0, so reminders and the night report arri
 2. Type a name (for example `jonayedbob`) → **add domain**. Put your server's public IP in **current ip** → **update ip**.
 3. Your address is now `jonayedbob.duckdns.org`.
 
-### 4.3 Install and start
+### 4.3 Install and start (one command)
+Connect to the server (from a laptop: `ssh ubuntu@YOUR_IP`; from a phone: Oracle's **Cloud Shell**, the `>_` icon at the top of the Oracle website, then `ssh ubuntu@YOUR_IP`), and run:
 ```bash
-ssh ubuntu@YOUR_IP
-# Oracle's Ubuntu blocks web ports inside the server too; open them:
-sudo iptables -I INPUT 6 -p tcp --dport 80 -j ACCEPT
-sudo iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
-sudo apt-get install -y iptables-persistent && sudo netfilter-persistent save
-
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker ubuntu && newgrp docker
-
 git clone https://github.com/Jonayed100/Mr.Bob-Ai-Agent.git
-cd Mr.Bob-Ai-Agent
-cp .env.example .env
-nano .env        # paste GROQ_API_KEY, Telegram, CallMeBot, Google keys, then set:
-                 #   PUBLIC_URL=https://jonayedbob.duckdns.org
-                 #   DOMAIN=jonayedbob.duckdns.org
-                 #   a strong DASHBOARD_PASSWORD and SECRET_KEY
-mkdir -p data && sudo chown -R 1000:1000 data
-docker compose up -d --build
+bash Mr.Bob-Ai-Agent/install.sh
 ```
-After a minute open **https://jonayedbob.duckdns.org**. Caddy gets the HTTPS certificate by itself. In Google Cloud, add `https://jonayedbob.duckdns.org/api/google/callback` as a redirect URI.
+`git clone` asks for your GitHub username and, as the password, a **personal access token** (GitHub → Settings → Developer settings → Fine-grained tokens → read access to this repo).
+
+The installer asks for your DuckDNS address, a dashboard password and your keys, then installs Docker, opens the ports, creates a random secret key, and starts Mr. Bob with HTTPS. At the end it prints your link. Open it on your phone and **Add to Home Screen**.
+
+In Google Cloud, add `https://YOUR-NAME.duckdns.org/api/google/callback` as a redirect URI.
 
 > No card at all? Run Mr. Bob on your own computer (Step 2). It's free too, but he only works while the computer is on.
 
