@@ -9,3 +9,8 @@ venv/
 .DS_Store
 caddy_data/
 caddy_config/
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/*.apk
+mobile/*.aab

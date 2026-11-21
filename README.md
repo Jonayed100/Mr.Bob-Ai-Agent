@@ -20,7 +20,7 @@ Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail a
 | "Hey Bob" | Hands-free mode: say "Hey Bob" while the dashboard is open and he starts listening. |
 | WhatsApp | Free alerts to your own number (CallMeBot), plus optional two-way chat with the WhatsApp Cloud API. |
 | bKash | Your phone forwards bKash SMS; Mr. Bob tracks money in and out, your balance, and warns you when it's low. |
-| Phone app | Install the dashboard on your home screen; it opens full-screen and works on weak connections. |
+| Phone app | A real Android/iPhone app (`mobile/`) with push notifications, voice and chat. The dashboard can also be added to your home screen. |
 | 12-hour time | Every time is shown and spoken as 12-hour (3:00 PM). |
 | Email drafts | He can write a Gmail draft for you. He never sends email or pays for anything himself. |
 | Dashboard | iOS 26 "Liquid Glass" style, with Mr. Bob's photo as a living 3D card, today's widgets, chat, connections, activity log and a live monthly cost card. Can be added to your phone's home screen. |
@@ -52,6 +52,7 @@ mr-bob/
 │  ├─ services/          email importance, checks, briefings, suggestions, costs
 │  └─ worker/            scheduler and Telegram listener
 ├─ frontend/             the Liquid Glass dashboard and Mr. Bob's photo
+├─ mobile/               the Android/iPhone app (React Native + Expo), see mobile/README.md
 ├─ tests/                unit tests
 ├─ Dockerfile, docker-compose.yml, Caddyfile
 └─ .env.example          every setting, explained
@@ -223,8 +224,10 @@ He understands received money, send money, cash in, cash out, payments, mobile r
 ### "Hey Bob" hands-free
 **Settings → "Hey Bob" hands-free → on.** While the dashboard is open (laptop on the desk, or the app on your phone), say **"Hey Bob"**. The voice screen opens, he listens, answers out loud, and goes back to waiting. This uses the browser's built-in speech recognition (Chrome, Edge or Safari) and only works while the page is open. A true always-on "Hey Bob" needs a small device such as a Raspberry Pi, which is a later project.
 
-### Install as a phone app
-Open the dashboard in Chrome (Android) or Safari (iPhone) → **Install app / Add to Home Screen**. He gets his own icon, opens full-screen, and still opens on a weak connection.
+### The phone app
+Mr. Bob has a real app for Android and iPhone in the `mobile/` folder, with push notifications. **See [mobile/README.md](mobile/README.md)**: you can try it on your phone in a few minutes with Expo Go, then build an installable Android app for free.
+
+Quick option without installing anything: open the dashboard in Chrome (Android) or Safari (iPhone) → **Add to Home Screen**.
 
 ---
 
@@ -272,7 +275,7 @@ All in `.env` (restart after changing):
 ## Ideas for later
 - Always-on "Hey Bob" on a small device (Raspberry Pi with a custom wake word).
 - Nagad and bank SMS tracking.
-- A native phone app in the stores.
+- Publish the phone app on Google Play and the App Store.
 
 ---
 

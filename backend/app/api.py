@@ -21,7 +21,7 @@ from .services.notify import telegram_chat
 from .services.whatsapp_chat import handle_webhook
 from .services.activity import record
 from .timeutil import clock, friendly, hhmm, now_local, to_utc
-from .voice import stt, tts
+from .voice import audio_cache, stt, tts
 
 router = APIRouter(prefix="/api")
 auth = [Depends(require_login)]
@@ -41,7 +41,8 @@ def login(body: LoginIn, response: Response, settings: Settings = Depends(get_se
         COOKIE, make_token(settings), max_age=MAX_AGE, httponly=True, samesite="lax",
         secure=settings.public_url.startswith("https://"),
     )
-    return {"ok": True}
+    # the phone app keeps this token and sends it as "Authorization: Bearer ..."
+    return {"ok": True, "token": make_token(settings)}
 
 
 @router.post("/logout")
@@ -112,7 +113,7 @@ async def chat(body: ChatIn, db: Session = Depends(get_db)):
     )
     db.commit()
     audio = await tts.speak(answer, language) if body.speak else b""
-    return {"reply": answer, "audio": base64.b64encode(audio).decode() if audio else None}
+    return _with_audio({"reply": answer}, audio)
 
 
 @router.post("/voice", dependencies=auth)
@@ -133,7 +134,22 @@ async def voice(
     answer = await run_in_threadpool(get_brain().reply, db, heard, language=language, channel="voice", spoken=True)
     db.commit()
     mp3 = await tts.speak(answer, language)
-    return {"heard": heard, "reply": answer, "audio": base64.b64encode(mp3).decode() if mp3 else None}
+    return _with_audio({"heard": heard, "reply": answer}, mp3)
+
+
+def _with_audio(body: dict, mp3: bytes) -> dict:
+    """The web page plays base64 audio; the phone app streams it from a short-lived link."""
+    body["audio"] = base64.b64encode(mp3).decode() if mp3 else None
+    body["audio_url"] = f"/api/audio/{audio_cache.put(mp3)}.mp3" if mp3 else None
+    return body
+
+
+@router.get("/audio/{key}.mp3")
+def audio(key: str):
+    mp3 = audio_cache.get(key)
+    if mp3 is None:
+        raise HTTPException(404, "Expired")
+    return Response(mp3, media_type="audio/mpeg")
 
 
 @router.get("/messages", dependencies=auth)
@@ -285,4 +301,19 @@ async def whatsapp_incoming(request: Request, settings: Settings = Depends(get_s
         handle_webhook(await request.json())
     except Exception:
         pass  # always answer 200 so Meta doesn't keep retrying
+    return {"ok": True}
+
+
+# ---------- phone app push notifications ----------
+class PushIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+
+
+@router.post("/push/register", dependencies=auth)
+def push_register(body: PushIn, db: Session = Depends(get_db)):
+    from .services.notify import add_push_token
+
+    if add_push_token(db, body.token):
+        record(db, "Phone app connected for notifications", "settings")
+    db.commit()
     return {"ok": True}

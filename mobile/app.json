@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Mr. Bob",
+    "slug": "mr-bob",
+    "scheme": "mrbob",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#f3eef2"
+    },
+    "ios": {
+      "bundleIdentifier": "com.projectaethrix.mrbob",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Mr. Bob listens when you tap the mic so you can talk to him.",
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "package": "com.projectaethrix.mrbob",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#E0142F"
+      },
+      "permissions": ["RECORD_AUDIO", "POST_NOTIFICATIONS"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-audio", { "microphonePermission": "Mr. Bob listens when you tap the mic so you can talk to him." }],
+      ["expo-notifications", { "color": "#E0142F" }]
+    ],
+    "experiments": { "typedRoutes": false },
+    "extra": {
+      "eas": { "projectId": "" }
+    }
+  }
+}

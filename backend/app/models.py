@@ -121,6 +121,7 @@ DEFAULT_CONNECTIONS = [
     ("telegram", "Telegram", "Alerts, briefings and chat", True, 4),
     ("whatsapp", "WhatsApp", "Alerts and chat", True, 5),
     ("bkash", "bKash SMS", "Tracks money in and out", True, 6),
+    ("app", "Phone app", "Push notifications", True, 7),
 ]
 
 
