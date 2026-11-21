@@ -14,9 +14,15 @@ class Reminder(Base):
     __tablename__ = "reminders"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     text: Mapped[str] = mapped_column(String(300))
+    notes: Mapped[str] = mapped_column(Text, default="")
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    priority: Mapped[str] = mapped_column(String(10), default="normal")  # normal / important
+    repeat: Mapped[str] = mapped_column(String(10), default="none")  # none / daily / weekly / monthly
     done: Mapped[bool] = mapped_column(Boolean, default=False)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    seen_on_web: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -96,6 +102,30 @@ class KeyValue(Base):
     __tablename__ = "kv"
     key: Mapped[str] = mapped_column(String(80), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+class Memory(Base):
+    """Something Mr. Bob learned about his owner and should remember."""
+
+    __tablename__ = "memories"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    text: Mapped[str] = mapped_column(String(400))
+    kind: Mapped[str] = mapped_column(String(20), default="fact")  # fact / preference / person / goal / routine
+    source: Mapped[str] = mapped_column(String(20), default="chat")  # chat / manual
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Report(Base):
+    """A daily report: the night briefing, saved part by part."""
+
+    __tablename__ = "reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)  # YYYY-MM-DD, local
+    title: Mapped[str] = mapped_column(String(200))
+    summary: Mapped[str] = mapped_column(Text, default="")
+    parts_json: Mapped[str] = mapped_column(Text, default="[]")
+    language: Mapped[str] = mapped_column(String(10), default="english")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Transaction(Base):

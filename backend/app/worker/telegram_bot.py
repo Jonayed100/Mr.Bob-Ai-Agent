@@ -14,11 +14,13 @@ import time
 import httpx
 
 from ..agent.brain import get_brain
+from ..agent.intent import wants_briefing
 from ..config import get_settings
 from ..db import session_scope
 from ..integrations import telegram
 from ..integrations.whatsapp import digits
 from ..models import is_enabled, kv_get, kv_set
+from ..services import debrief
 from ..services.activity import record
 from ..services.notify import telegram_chat
 from ..voice import stt, tts
@@ -57,6 +59,13 @@ def _link_owner(msg: dict, chat_id: str) -> None:
                    data={"chat_id": chat_id, "text": "Sorry, I only work for my owner.", "reply_markup": remove}, timeout=20)
 
 
+def _send_briefing(db, chat_id: str, said: str, language: str) -> None:
+    telegram.send_text("📋 Preparing your report… one moment.", chat_id)
+    report = debrief.build(db, said=said, language=language)
+    telegram.send_text(debrief.as_text(report), chat_id)
+    telegram.send_voice(tts.speak_sync(debrief.spoken(report), report.language), chat_id)
+
+
 def _handle(update: dict) -> None:
     s = get_settings()
     msg = update.get("message") or {}
@@ -89,6 +98,9 @@ def _handle(update: dict) -> None:
             if not heard:
                 telegram.send_text("Sorry, I couldn't hear that. Try again?", chat_id)
                 return
+            if wants_briefing(heard):
+                _send_briefing(db, chat_id, heard, language)
+                return
             answer = get_brain().reply(db, heard, language=language, channel="telegram", spoken=True)
             telegram.send_text(f"🗣 {heard}\n\n{answer}", chat_id)
             telegram.send_voice(tts.speak_sync(answer, language), chat_id)
@@ -97,7 +109,11 @@ def _handle(update: dict) -> None:
         if not text:
             return
         if text == "/start":
-            telegram.send_text(f"Hi {s.owner_name}! Mr. Bob here. Send me a message or a voice note. 🐱", chat_id)
+            telegram.send_text(f"Hi {s.owner_name}! Mr. Bob here. Send me a message or a voice note. 🐱\n"
+                               "Say \"tell me about my important tasks\" or send /report for tonight's report.", chat_id)
+            return
+        if text == "/report" or wants_briefing(text):
+            _send_briefing(db, chat_id, text, language)
             return
         answer = get_brain().reply(db, text, language=language, channel="telegram")
         telegram.send_text(answer, chat_id)

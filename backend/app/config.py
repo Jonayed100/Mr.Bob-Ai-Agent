@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # speech-to-text (OpenAI) and voice (Microsoft Edge neural voices, free)
     openai_api_key: str = ""
     stt_model: str = "gpt-4o-mini-transcribe"
+    # voice: "openai" = expressive, natural voice (paid, about $0.015/min); "edge" = free voices
+    tts_provider: str = "openai"
+    tts_model: str = "gpt-4o-mini-tts"
+    tts_openai_voice: str = "ash"
+    tts_bangla_provider: str = "edge"  # native Bangladeshi voice; set "openai" to try OpenAI for Bangla too
+    tts_usd_per_minute: float = 0.015
     tts_voice_english: str = "en-GB-RyanNeural"
     tts_voice_bangla: str = "bn-BD-PradeepNeural"
     tts_voice_banglish: str = "en-IN-PrabhatNeural"

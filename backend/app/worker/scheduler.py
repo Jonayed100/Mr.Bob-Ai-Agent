@@ -8,7 +8,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from ..config import get_settings
 from ..db import session_scope
-from ..services import briefing, checks
+from ..services import briefing, checks, debrief
 
 log = logging.getLogger("mrbob")
 
@@ -40,11 +40,12 @@ def start() -> BackgroundScheduler:
                   next_run_time=first)
     sched.add_job(_safe("calendar", checks.calendar_heads_up), "interval", minutes=5, id="calendar")
     sched.add_job(_safe("weather", checks.weather_watch), "interval", hours=1, id="weather", next_run_time=first)
-    sched.add_job(_safe("reminders", checks.reminders_due), "interval", minutes=1, id="reminders")
+    sched.add_job(_safe("reminders", checks.reminders_due), "interval", seconds=30, id="reminders")
     sched.add_job(_safe("suggestions", briefing.refresh_suggestions), CronTrigger(hour="8-22/3", minute=5,
                   timezone=s.timezone), id="suggestions")
     sched.add_job(_safe("morning", briefing.send_briefing, "morning"), _at(s.morning_briefing_time), id="morning")
-    sched.add_job(_safe("evening", briefing.send_briefing, "evening"), _at(s.evening_summary_time), id="evening")
+    # the night report replaces the old evening summary
+    sched.add_job(_safe("night_report", debrief.nightly), _at(s.evening_summary_time), id="night_report")
     sched.start()
     log.info("Scheduler started")
     return sched

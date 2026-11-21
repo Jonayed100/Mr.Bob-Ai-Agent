@@ -11,7 +11,7 @@ from ..agent.brain import get_brain
 from ..agent.prompts import IMPORTANCE_PROMPT
 from ..config import get_settings
 from ..integrations import gcalendar, gmail, google_auth
-from ..models import Alert, Reminder, is_enabled, kv_get, kv_set
+from ..models import Alert, is_enabled, kv_get, kv_set
 from ..timeutil import hhmm, now_local, now_utc, to_utc
 from .activity import record
 from .importance import clamp, rule_score
@@ -120,13 +120,6 @@ def weather_watch(db: Session) -> None:
 
 # ---------- Reminders ----------
 def reminders_due(db: Session) -> None:
-    rows = db.scalars(
-        select(Reminder).where(
-            Reminder.done.is_(False), Reminder.notified.is_(False), Reminder.due_at.is_not(None),
-            Reminder.due_at <= to_utc(now_utc()),
-        )
-    ).all()
-    for r in rows:
-        notify(db, f"🔔 Reminder: {r.text}")
-        r.notified = True
-        record(db, f"Sent reminder: {r.text}", "reminder")
+    from .reminder_jobs import fire_due
+
+    fire_due(db)

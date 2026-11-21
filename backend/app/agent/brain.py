@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..models import Message
+from ..services import memory
 from ..services.costs import add_usage, claude_cost_usd
 from .prompts import system_prompt
 from .tools import TOOL_SPECS, ToolRunner
@@ -37,6 +38,7 @@ class Brain:
         db.flush()
         try:
             answer = self._claude_chat(db, history + [{"role": "user", "content": text}], language, spoken)
+            memory.learn_in_background(text)
         except Exception as exc:
             log.warning("Claude failed, using backup brain: %s", exc)
             answer = self._backup_chat(db, history, text, language, spoken)
@@ -64,7 +66,7 @@ class Brain:
         if not self.claude:
             raise RuntimeError("ANTHROPIC_API_KEY is not set")
         runner = ToolRunner(db)
-        system = system_prompt(language, spoken)
+        system = system_prompt(language, spoken, memory.prompt_block(db))
         for _ in range(MAX_TOOL_ROUNDS):
             res = self.claude.messages.create(
                 model=self.s.claude_model,
@@ -91,7 +93,7 @@ class Brain:
             return "Sorry, my brain is offline right now. Please check the API keys in the settings."
         from ..services.snapshot import today_snapshot  # avoid a circular import
 
-        system = system_prompt(language, spoken) + "\n\nToday's data (you cannot use tools right now):\n" + json.dumps(
+        system = system_prompt(language, spoken, memory.prompt_block(db)) + "\n\nToday's data (you cannot use tools right now):\n" + json.dumps(
             today_snapshot(db), default=str, ensure_ascii=False
         )
         try:

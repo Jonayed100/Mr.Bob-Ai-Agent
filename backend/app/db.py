@@ -28,7 +28,10 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 def init_db() -> None:
     from . import models  # noqa: F401  (registers the tables)
 
+    from .migrations import upgrade
+
     Base.metadata.create_all(engine)
+    upgrade(engine)
     models.seed_connections()
 
 

@@ -15,6 +15,10 @@ def stt_cost_usd(seconds: float) -> float:
     return max(seconds, 1) / 60 * get_settings().stt_usd_per_minute
 
 
+def tts_cost_usd(seconds: float) -> float:
+    return max(seconds, 1) / 60 * get_settings().tts_usd_per_minute
+
+
 def add_usage(db: Session, service: str, units: float, cost_usd: float) -> None:
     db.add(Usage(service=service, units=units, cost_usd=cost_usd))
 
@@ -33,14 +37,16 @@ def month_summary(db: Session) -> dict:
 
     claude = bdt(spent.get("claude", 0))
     stt = bdt(spent.get("stt", 0))
-    vat = round((claude + stt) * s.vat_rate)
+    voice = bdt(spent.get("tts", 0))
+    vat = round((claude + stt + voice) * s.vat_rate)
     items = [
         {"label": "Server (VPS)", "bdt": s.server_cost_bdt, "color": "#1d1d1f"},
         {"label": "AI brain (Claude)", "bdt": claude, "color": "#e0142f"},
         {"label": "Speech-to-text", "bdt": stt, "color": "#ff9500"},
+        {"label": "Natural voice", "bdt": voice, "color": "#af52de"},
         {"label": "Domain", "bdt": s.domain_cost_bdt_per_month, "color": "#0a84ff"},
         {"label": "VAT on USD services", "bdt": vat, "color": "#8e8e93"},
-        {"label": "Voice, Telegram, backup AI", "bdt": 0, "color": "#34c759"},
+        {"label": "Telegram, WhatsApp, backup AI", "bdt": 0, "color": "#34c759"},
     ]
     total = sum(i["bdt"] for i in items)
     return {"items": items, "total": total, "budget": s.monthly_budget_bdt, "left": s.monthly_budget_bdt - total}

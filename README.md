@@ -8,22 +8,21 @@ Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail a
 
 ## What he does
 
-| Feature | How it works |
+Mr. Bob is your **friend and personal manager**. The website is the main home; Telegram, WhatsApp and the phone app are extra ways to reach him.
+
+| Part | What it does |
 |---|---|
-| Important email alerts | Checks Gmail every 10 minutes. Keyword rules sort most mail for free; only unclear emails go to Claude for a score. Important ones are sent to you on Telegram. |
-| Calendar heads-up | Messages you 30 minutes before each event. |
-| Weather and air | Hourly check (Open-Meteo, free). Warns about rain and unhealthy air. |
-| Reminders | "Remind me to call Ammu at 8 PM" works by voice, text or Telegram. |
-| Suggestions | Every 3 hours he writes up to 3 practical tips. Mark them Useful / Not useful and he learns. |
-| Briefings | Morning briefing (7:00 AM) and evening wrap-up (9:30 PM) on Telegram and WhatsApp, with a voice note on Telegram. |
-| Voice | Siri-style voice screen on the dashboard, plus Telegram and WhatsApp voice notes. |
-| "Hey Bob" | Hands-free mode: say "Hey Bob" while the dashboard is open and he starts listening. |
-| WhatsApp | Free alerts to your own number (CallMeBot), plus optional two-way chat with the WhatsApp Cloud API. |
-| bKash | Your phone forwards bKash SMS; Mr. Bob tracks money in and out, your balance, and warns you when it's low. |
-| Phone app | A real Android/iPhone app (`mobile/`) with push notifications, voice and chat. The dashboard can also be added to your home screen. |
-| 12-hour time | Every time is shown and spoken as 12-hour (3:00 PM). |
-| Email drafts | He can write a Gmail draft for you. He never sends email or pays for anything himself. |
-| Dashboard | iOS 26 "Liquid Glass" style, with Mr. Bob's photo as a living 3D card, today's widgets, chat, connections, activity log and a live monthly cost card. Can be added to your phone's home screen. |
+| **Reminders** | Add reminders with a **date and time**, mark them ⭐ important, repeat them daily / weekly / monthly, add notes, edit, snooze, tick off. At the right time Mr. Bob pops up on the website and **says it out loud**, and also messages you on Telegram, WhatsApp and the phone app. You can also just say *“Remind me to call Ammu tomorrow at 8 PM.”* |
+| **Night report** | Say **“Hey Mr. Bob, tell me about my important tasks”** (or *“আমার আজকের রিপোর্ট দাও”*). He goes through your day **part by part**, most urgent first, and explains each one: what it is, why it matters, what to do and by when. Important parts are marked. Every night at 9:30 PM he does this by himself too. |
+| **Reports** | Every briefing is saved in the **Reports** section of the website, one per day, so you can read or listen again later. The night report is also sent to Telegram and WhatsApp with a link. |
+| **Memory** | Talk to him like a friend. He **remembers** people, dates, plans, goals and what you like, and uses it naturally later. See and edit everything he remembers in the **Memory** section. |
+| **Language** | Speak English, he answers in English. Speak Bangla, he answers in Bangla. Both in voice. |
+| **Natural voice** | An expressive, human-sounding voice (OpenAI) that speaks warmly and calmly, with a native Bangladeshi voice for Bangla. Free voices are the automatic backup. |
+| **Gmail** | Checks every 10 minutes. Keyword rules sort most mail for free; only unclear emails go to Claude. Important ones are flagged and sent to you. He can save draft replies (never sends). |
+| **WhatsApp & Telegram** | Alerts, reminders and the night report arrive there. Chat by text or voice notes; send `/report` on Telegram for tonight's report. |
+| **Calendar, weather, bKash** | Calendar heads-up 30 minutes before events, rain and air-quality warnings, bKash money in/out from SMS. |
+| **“Hey Mr. Bob”** | Hands-free mode on the website: say “Hey Mr. Bob” while the page is open. |
+| **Dashboard** | iOS 26 Liquid Glass design with pages for Home, Reminders, Reports, Memory and Settings, plus a Siri-style voice screen. 12-hour time everywhere. |
 
 ## How it is built
 
@@ -46,10 +45,11 @@ mr-bob/
 │  ├─ api.py             all /api routes used by the dashboard
 │  ├─ config.py          settings from .env
 │  ├─ models.py          database tables
-│  ├─ agent/             brain (Claude + backup), tools, prompts, language detection
+│  ├─ agent/             brain (Claude + backup), tools, prompts, language and briefing detection
 │  ├─ integrations/      Gmail, Calendar, Google sign-in, weather, Telegram
 │  ├─ voice/             speech-to-text and text-to-speech
-│  ├─ services/          email importance, checks, briefings, suggestions, costs
+│  ├─ services/          reminders, memory, night report, email importance, checks, notify, costs
+│  ├─ migrations.py      upgrades an existing database when new fields are added
 │  └─ worker/            scheduler and Telegram listener
 ├─ frontend/             the Liquid Glass dashboard and Mr. Bob's photo
 ├─ mobile/               the Android/iPhone app (React Native + Expo), see mobile/README.md
@@ -240,7 +240,8 @@ Quick option without installing anything: open the dashboard in Chrome (Android)
 | OpenAI speech-to-text | ৳350 | USD card, prepaid |
 | Domain | ৳150 (per month, paid yearly) | bKash |
 | 15% VAT on USD payments | ৳140 | added by your bank |
-| Voice, Telegram, WhatsApp alerts, bKash tracking, Groq backup, weather, database | ৳0 | — |
+| Natural voice (OpenAI, about $0.015 per spoken minute) | ~৳180 | USD card, prepaid |
+| Telegram, WhatsApp alerts, bKash tracking, Groq backup, weather, database | ৳0 | — |
 
 The dashboard's **Monthly cost** card shows real spending: every Claude and speech-to-text call is recorded. Things that keep it low:
 - Keyword rules decide most emails without the AI.
@@ -255,7 +256,8 @@ The dashboard's **Monthly cost** card shows real spending: every Claude and spee
 All in `.env` (restart after changing):
 
 - `MORNING_BRIEFING_TIME`, `EVENING_SUMMARY_TIME`: when briefings arrive.
-- `TTS_VOICE_*`: Mr. Bob's voices. Other Bangla voice: `bn-BD-NabanitaNeural`.
+- `TTS_PROVIDER`, `TTS_OPENAI_VOICE`: the natural voice (`ash`, `coral`, `sage`…). Set `TTS_PROVIDER=edge` for free voices only.
+- `TTS_VOICE_*`: the free backup voices. Other Bangla voice: `bn-BD-NabanitaNeural`.
 - `CITY`, `LATITUDE`, `LONGITUDE`: for weather.
 - `STT_MODEL`: if OpenAI retires a speech model, put the new name here.
 
