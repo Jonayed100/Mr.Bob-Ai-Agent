@@ -3,6 +3,7 @@ uvicorn[standard]==0.32.1
 python-multipart==0.0.20
 pydantic-settings==2.7.0
 SQLAlchemy==2.0.36
+psycopg[binary]>=3.2,<4
 APScheduler==3.11.0
 httpx==0.28.1
 itsdangerous==2.2.0

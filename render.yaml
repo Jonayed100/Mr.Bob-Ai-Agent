@@ -1,0 +1,33 @@
+# One-click deploy on Render (free plan).
+# Render → New → Blueprint → pick this repo. It asks for the values marked sync: false.
+services:
+  - type: web
+    name: mr-bob
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- needed ---
+      - key: DATABASE_URL
+        sync: false          # Supabase "Session pooler" connection string (see README "Render")
+      - key: GROQ_API_KEY
+        sync: false          # free, from console.groq.com
+      - key: DASHBOARD_PASSWORD
+        sync: false          # 8+ characters
+      - key: SECRET_KEY
+        generateValue: true  # Render makes a random one for you
+      - key: KEEP_AWAKE
+        value: "true"        # Mr. Bob visits himself every 10 minutes so he doesn't fall asleep
+      - key: TTS_PROVIDER
+        value: edge
+      - key: MONTHLY_BUDGET_BDT
+        value: "0"
+      - key: SERVER_COST_BDT
+        value: "0"
+      - key: DOMAIN_COST_BDT_PER_MONTH
+        value: "0"
+      - key: OWNER_PHONE
+        value: "+8801787361208"
+# Telegram, WhatsApp (CallMeBot) and Google keys: add them later in Render → mr-bob → Environment.

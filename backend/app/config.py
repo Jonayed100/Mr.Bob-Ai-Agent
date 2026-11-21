@@ -1,6 +1,7 @@
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +11,7 @@ class Settings(BaseSettings):
     See .env.example for what each one does.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", populate_by_name=True)
 
     # who Mr. Bob works for
     owner_name: str = "Jonayed"
@@ -20,7 +21,11 @@ class Settings(BaseSettings):
     longitude: float = 90.4125
 
     # web
-    public_url: str = "http://localhost:8000"
+    # on Render this fills itself in from RENDER_EXTERNAL_URL
+    public_url: str = Field("http://localhost:8000", validation_alias=AliasChoices("PUBLIC_URL", "RENDER_EXTERNAL_URL"))
+    # free hosts like Render put an app to sleep after 15 idle minutes; this makes Mr. Bob
+    # visit his own /health page every 10 minutes so reminders keep working
+    keep_awake: bool = False
     dashboard_password: str = "change-me"
     secret_key: str = "change-me-to-a-long-random-string"
     database_url: str = "sqlite:///./data/mrbob.db"

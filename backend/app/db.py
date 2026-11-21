@@ -12,13 +12,23 @@ class Base(DeclarativeBase):
     pass
 
 
+def normalize_url(url: str) -> str:
+    """Accept the Postgres links that Supabase, Neon or Render give you, as they are."""
+    url = url.strip()
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def _make_engine():
-    url = get_settings().database_url
+    url = normalize_url(get_settings().database_url)
     if url.startswith("sqlite:///"):
         # make sure the folder for the sqlite file exists
         Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
         return create_engine(url, connect_args={"check_same_thread": False})
-    return create_engine(url, pool_pre_ping=True)
+    # online database: small pool, and recycle connections that the host may close
+    return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5, pool_recycle=300)
 
 
 engine = _make_engine()

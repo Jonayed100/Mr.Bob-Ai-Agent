@@ -2,7 +2,7 @@
 
 **A personal AI agent. A Project Aethrix Work.**
 
-![CI](https://github.com/Jonayed100/Mr.Bob-Ai-Agent/actions/workflows/ci.yml/badge.svg) ![Version](https://img.shields.io/badge/version-2.2.0-e0142f) ![Python](https://img.shields.io/badge/python-3.12-1d1d1f)
+![CI](https://github.com/Jonayed100/Mr.Bob-Ai-Agent/actions/workflows/ci.yml/badge.svg) ![Version](https://img.shields.io/badge/version-2.3.0-e0142f) ![Python](https://img.shields.io/badge/python-3.12-1d1d1f)
 
 Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail and Google Calendar, watches the weather and air quality in Dhaka, reminds you of things, and tells you what matters on Telegram and on his own web dashboard. You can talk to him by voice or text in **English, বাংলা or Banglish**, and he answers in the same style, out loud.
 
@@ -76,7 +76,8 @@ Mr. Bob runs completely free out of the box. `.env.example` is already set up fo
 | Background jobs (email sorting, reports) | **Groq** `gpt-oss-20b` | its own separate quota |
 | Ears (speech-to-text, Bangla + English) | **Groq Whisper** | about 8 hours of audio a day |
 | Voice | **Microsoft Edge neural voices**, native Bangladeshi voice for Bangla | free |
-| Server, running 24/7 | **Oracle Cloud Always Free** ARM VM | 2 CPUs + 12 GB RAM is enough |
+| Server, running 24/7 | **Render** free web service, or **Oracle Cloud Always Free** | one app runs all month |
+| Database (for Render) | **Supabase** free Postgres | 500 MB, plenty for years of reminders |
 | Web address with HTTPS | **DuckDNS** (`yourname.duckdns.org`) + Caddy | free |
 | Telegram, WhatsApp alerts, Gmail, Calendar, weather | free | |
 
@@ -84,7 +85,7 @@ Free vs paid: the free brain is a little less clever than Claude and the free vo
 
 If you hit Groq's limit (very heavy use in one day), Mr. Bob says so and works again a minute later; the daily limit resets every day.
 
-**For free mode, you only need Steps 1c to 1f.** Skip 1a and 1b. For the server, follow **Step 4 (free)**.
+**For free mode, you only need Steps 1c to 1f.** Skip 1a and 1b. To put him online, the easiest is **Render + Supabase** (works from a phone); **Oracle Cloud** is the sturdier free option.
 
 ## Step 1. Get your keys (one time, about 30 minutes)
 
@@ -168,6 +169,36 @@ Run the tests any time with `pytest`.
 3. Send the bot "hi" or a voice note. He answers, and from now on alerts and briefings arrive there. Anyone else who finds your bot is ignored.
 
 ---
+
+## Step 4 (free, easiest from a phone). Put him online with Render + Supabase
+
+Everything is done in the browser, so this works from an iPhone. No server commands, no card.
+
+- **Render** runs Mr. Bob and gives him an `https://….onrender.com` address.
+- **Supabase** keeps his memory, reminders and reports in a free database, because Render's free plan wipes its own disk whenever it restarts.
+- `KEEP_AWAKE=true` makes Mr. Bob visit himself every 10 minutes, because Render puts free apps to sleep after 15 idle minutes and a sleeping Mr. Bob can't send reminders. Render discourages keeping free apps awake this way and could suspend the app; if that happens, move to Oracle (below).
+
+### R1. Free database (Supabase, 5 min)
+1. Open **supabase.com** → **Start your project** → sign in with GitHub.
+2. **New project**: name `mr-bob`, make up a **database password** (save it in Notes), region **Singapore** → **Create**.
+3. When it's ready, tap **Connect** (top of the project page) → **Session pooler** → copy the connection string. It looks like
+   `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`
+4. Replace `[YOUR-PASSWORD]` with your database password. That's your `DATABASE_URL`.
+
+### R2. Deploy (Render, 10 min)
+1. Open **render.com** → **Get started** → sign in **with GitHub**, and allow Render to see **Mr.Bob-Ai-Agent**.
+2. **New → Blueprint** → pick **Mr.Bob-Ai-Agent**. Render reads `render.yaml` and asks for:
+   - `DATABASE_URL`: from R1
+   - `GROQ_API_KEY`: from console.groq.com
+   - `DASHBOARD_PASSWORD`: 8 or more characters
+3. Tap **Deploy Blueprint**. The first build takes about 5–10 minutes.
+4. When it says **Live**, tap the `https://mr-bob-xxxx.onrender.com` link. Log in, then **Share → Add to Home Screen**.
+
+### R3. Add the rest (any time)
+Render → **mr-bob → Environment → Add**: `TELEGRAM_BOT_TOKEN`, `CALLMEBOT_APIKEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Save and it restarts by itself.
+For Google, the redirect URI is `https://mr-bob-xxxx.onrender.com/api/google/callback`.
+
+Every push to GitHub redeploys automatically.
 
 ## Step 4 (free). Put him online with Oracle Cloud + DuckDNS
 

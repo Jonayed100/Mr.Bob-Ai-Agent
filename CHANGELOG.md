@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0
+- Deploy on Render (free) with one Blueprint (`render.yaml`); works entirely from a phone.
+- Postgres support (Supabase, Neon or Render links work as given) so data survives restarts on free hosts.
+- Public address fills itself in on Render; optional keep-awake so reminders keep working.
+- Docker image honours `$PORT`.
+- One-command installer (`install.sh`) for your own server.
+
 ## 2.2.0
 - Free mode (৳0 a month): Groq's free model is now a full brain with every tool (reminders, memory, Gmail, calendar), not just a backup.
 - Background jobs use a smaller free model so chatting keeps its own quota; short waits and a friendly message when the free limit is reached.
