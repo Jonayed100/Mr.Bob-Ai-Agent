@@ -25,13 +25,17 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-to-a-long-random-string"
     database_url: str = "sqlite:///./data/mrbob.db"
 
-    # brain (Claude) and backup brain (Groq free tier)
+    # brain: "auto" = Claude if ANTHROPIC_API_KEY is set, otherwise Groq (free);
+    #        "groq" = always use the free Groq brain; "claude" = always Claude
+    brain_provider: str = "auto"
     anthropic_api_key: str = ""
     claude_model: str = "claude-haiku-4-5"
     claude_max_tokens: int = 700
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
-    groq_stt_model: str = "whisper-large-v3"
+    # smaller free model for background jobs (email sorting, reports), so chat keeps its own free quota
+    groq_fast_model: str = "openai/gpt-oss-20b"
+    groq_stt_model: str = "whisper-large-v3"  # best free accuracy for Bangla
 
     # speech-to-text (OpenAI) and voice (Microsoft Edge neural voices, free)
     openai_api_key: str = ""
@@ -86,6 +90,17 @@ class Settings(BaseSettings):
     claude_input_usd_per_mtok: float = 1.0
     claude_output_usd_per_mtok: float = 5.0
     stt_usd_per_minute: float = 0.003
+
+    @property
+    def use_claude(self) -> bool:
+        if self.brain_provider == "groq":
+            return False
+        return bool(self.anthropic_api_key)
+
+    @property
+    def free_mode(self) -> bool:
+        """True when no paid service is configured: Groq thinks and listens, Edge speaks."""
+        return not self.use_claude and not self.openai_api_key
 
     @property
     def tz(self) -> ZoneInfo:

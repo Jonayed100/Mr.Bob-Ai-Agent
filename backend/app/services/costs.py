@@ -46,7 +46,10 @@ def month_summary(db: Session) -> dict:
         {"label": "Natural voice", "bdt": voice, "color": "#af52de"},
         {"label": "Domain", "bdt": s.domain_cost_bdt_per_month, "color": "#0a84ff"},
         {"label": "VAT on USD services", "bdt": vat, "color": "#8e8e93"},
-        {"label": "Telegram, WhatsApp, backup AI", "bdt": 0, "color": "#34c759"},
+        {"label": "Telegram, WhatsApp, free AI (Groq), free voices", "bdt": 0, "color": "#34c759"},
     ]
+    if s.free_mode:  # only show what can actually cost money
+        items = [i for i in items if i["bdt"]] + [items[-1]]
     total = sum(i["bdt"] for i in items)
-    return {"items": items, "total": total, "budget": s.monthly_budget_bdt, "left": s.monthly_budget_bdt - total}
+    return {"items": items, "total": total, "budget": s.monthly_budget_bdt, "left": s.monthly_budget_bdt - total,
+            "free": s.free_mode}

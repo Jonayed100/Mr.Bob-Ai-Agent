@@ -2,7 +2,7 @@
 
 **A personal AI agent. A Project Aethrix Work.**
 
-![CI](https://github.com/Jonayed100/Mr.Bob-Ai-Agent/actions/workflows/ci.yml/badge.svg) ![Version](https://img.shields.io/badge/version-2.1.0-e0142f) ![Python](https://img.shields.io/badge/python-3.12-1d1d1f)
+![CI](https://github.com/Jonayed100/Mr.Bob-Ai-Agent/actions/workflows/ci.yml/badge.svg) ![Version](https://img.shields.io/badge/version-2.2.0-e0142f) ![Python](https://img.shields.io/badge/python-3.12-1d1d1f)
 
 Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail and Google Calendar, watches the weather and air quality in Dhaka, reminds you of things, and tells you what matters on Telegram and on his own web dashboard. You can talk to him by voice or text in **English, বাংলা or Banglish**, and he answers in the same style, out loud.
 
@@ -66,26 +66,46 @@ mr-bob/
 
 ---
 
+## Free mode: ৳0 a month
+
+Mr. Bob runs completely free out of the box. `.env.example` is already set up for it.
+
+| Part | Free service | Limit (plenty for one person) |
+|---|---|---|
+| Brain, with all tools (reminders, memory, Gmail, calendar) | **Groq** `gpt-oss-120b` | about 1,000 messages a day |
+| Background jobs (email sorting, reports) | **Groq** `gpt-oss-20b` | its own separate quota |
+| Ears (speech-to-text, Bangla + English) | **Groq Whisper** | about 8 hours of audio a day |
+| Voice | **Microsoft Edge neural voices**, native Bangladeshi voice for Bangla | free |
+| Server, running 24/7 | **Oracle Cloud Always Free** ARM VM | 2 CPUs + 12 GB RAM is enough |
+| Web address with HTTPS | **DuckDNS** (`yourname.duckdns.org`) + Caddy | free |
+| Telegram, WhatsApp alerts, Gmail, Calendar, weather | free | |
+
+Free vs paid: the free brain is a little less clever than Claude and the free voice sounds less human than OpenAI's, but everything works the same. To upgrade later, add `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY` (and `TTS_PROVIDER=openai`) to `.env` and restart. Nothing else changes.
+
+If you hit Groq's limit (very heavy use in one day), Mr. Bob says so and works again a minute later; the daily limit resets every day.
+
+**For free mode, you only need Steps 1c to 1f.** Skip 1a and 1b. For the server, follow **Step 4 (free)**.
+
 ## Step 1. Get your keys (one time, about 30 minutes)
 
 You need these before Mr. Bob can do anything. Put each one in `.env` (Step 2).
 
-### 1a. Claude: the brain (paid, prepaid credit)
+### 1a. Claude: better brain (paid upgrade, skip for free mode)
 1. Go to **console.anthropic.com** and sign up.
 2. **Settings → Billing → Buy credits.** Add your USD card and buy **$5**. Turn **auto-reload off** so it can never charge more.
 3. **API keys → Create key.** Copy it into `ANTHROPIC_API_KEY`.
 
-### 1b. OpenAI: speech-to-text (paid, prepaid credit)
+### 1b. OpenAI: better ears and natural voice (paid upgrade, skip for free mode)
 1. Go to **platform.openai.com** and sign up.
 2. **Billing → Add payment details**, buy **$5**, and **switch off auto-reload** (it is on by default).
 3. **API keys → Create new secret key.** Copy it into `OPENAI_API_KEY`.
 
 > Prepaid cards are usually refused. Use a dual-currency debit/credit card or a freelancer virtual card.
 
-### 1c. Groq: free backup brain and ears
+### 1c. Groq: the free brain and ears (needed)
 1. Go to **console.groq.com** and sign up (no card needed).
 2. **API Keys → Create.** Copy it into `GROQ_API_KEY`.
-If Claude or OpenAI are down or out of credit, Mr. Bob quietly switches to Groq.
+In free mode Groq does all the thinking and listening. If you later add Claude or OpenAI, Groq becomes their automatic backup.
 
 ### 1d. Telegram bot
 1. In Telegram, open **@BotFather** and send `/newbot`.
@@ -149,7 +169,51 @@ Run the tests any time with `pytest`.
 
 ---
 
-## Step 4. Put him online (server + domain)
+## Step 4 (free). Put him online with Oracle Cloud + DuckDNS
+
+This keeps Mr. Bob running 24/7 for ৳0, so reminders and the night report arrive even when your laptop is off.
+
+### 4.1 Get a free server
+1. Sign up at **cloud.oracle.com/free**. Oracle checks your card with a small temporary hold that is given back; **Always Free** resources never cost anything. Choose a **home region near you** that offers Ampere A1 (for example Singapore or Mumbai). You can't change it later.
+2. **Compute → Instances → Create instance.**
+   - Image: **Canonical Ubuntu 24.04** (the `aarch64` version).
+   - Shape: **Ampere → VM.Standard.A1.Flex**, **2 OCPUs, 12 GB memory** (inside the Always Free limit).
+   - Add your SSH key (or let Oracle make one and download it).
+   - If it says *out of capacity*, try again later or pick another availability domain.
+3. Open the web ports: **Instance → Subnet → Security list → Add ingress rules**: source `0.0.0.0/0`, TCP, ports **80** and **443**.
+4. Note the instance's **public IP**.
+
+### 4.2 Get a free web address
+1. Go to **duckdns.org**, sign in with Google or GitHub.
+2. Type a name (for example `jonayedbob`) → **add domain**. Put your server's public IP in **current ip** → **update ip**.
+3. Your address is now `jonayedbob.duckdns.org`.
+
+### 4.3 Install and start
+```bash
+ssh ubuntu@YOUR_IP
+# Oracle's Ubuntu blocks web ports inside the server too; open them:
+sudo iptables -I INPUT 6 -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
+sudo apt-get install -y iptables-persistent && sudo netfilter-persistent save
+
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu && newgrp docker
+
+git clone https://github.com/Jonayed100/Mr.Bob-Ai-Agent.git
+cd Mr.Bob-Ai-Agent
+cp .env.example .env
+nano .env        # paste GROQ_API_KEY, Telegram, CallMeBot, Google keys, then set:
+                 #   PUBLIC_URL=https://jonayedbob.duckdns.org
+                 #   DOMAIN=jonayedbob.duckdns.org
+                 #   a strong DASHBOARD_PASSWORD and SECRET_KEY
+mkdir -p data && sudo chown -R 1000:1000 data
+docker compose up -d --build
+```
+After a minute open **https://jonayedbob.duckdns.org**. Caddy gets the HTTPS certificate by itself. In Google Cloud, add `https://jonayedbob.duckdns.org/api/google/callback` as a redirect URI.
+
+> No card at all? Run Mr. Bob on your own computer (Step 2). It's free too, but he only works while the computer is on.
+
+## Step 4 (paid). Put him online (server + domain)
 
 ### 4a. Buy a server (pay with bKash)
 Any Bangladeshi or international VPS works. Pick **Ubuntu 22.04 or 24.04, 2–4 GB RAM, full root access**. Most local hosts take bKash at checkout. You'll get an IP address and a root password by email.
@@ -243,7 +307,9 @@ Quick option without installing anything: open the dashboard in Chrome (Android)
 
 ---
 
-## Monthly cost (target ৳2,700)
+## Monthly cost
+
+**Free mode: ৳0.** The table below is only for the paid upgrade (target ৳2,700).
 
 | Item | About | Paid with |
 |---|---|---|

@@ -109,7 +109,7 @@ def dashboard(db: Session = Depends(get_db), settings: Settings = Depends(get_se
         "latest_report": (lambda r: debrief.to_dict(r) if r else None)(
             db.scalars(select(Report).order_by(Report.id.desc()).limit(1)).first()),
         "language": kv_get(db, "language", "auto"),
-        "brain": {"claude": bool(settings.anthropic_api_key), "backup": bool(settings.groq_api_key)},
+        "brain": {"claude": settings.use_claude, "backup": bool(settings.groq_api_key), "free": settings.free_mode},
     }
 
 

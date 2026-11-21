@@ -97,12 +97,12 @@ function render(d){
     `<div class="srow"><span class="app" style="background:#ff9500">N</span><div><b>Browser notifications</b><span>${perm==="granted"?"On for this browser":perm==="denied"?"Blocked in browser settings":"Pop-up reminders even when this tab is in the background"}</span></div>${perm==="default"?`<button class="chip" id="notifOn">Turn on</button>`:""}</div>`+
     `<div class="srow"><span class="app" style="background:#e0142f">B</span><div><b>“Hey Mr. Bob” hands-free</b><span>${SR?"Say “Hey Mr. Bob” while this page is open":"Needs Chrome, Edge or Safari"}</span></div><button class="sw" role="switch" id="wakeSw" aria-label="Hey Mr. Bob hands-free" aria-checked="${wakeOn}"></button></div>`+
     `<div class="srow"><span class="app" style="background:#af52de">V</span><div><b>Voice</b><span>Natural voice · replies in English or বাংলা, like you speak</span></div></div>`+
-    `<div class="srow"><span class="app" style="background:#d97757">AI</span><div><b>Brain</b><span>${d.brain.claude?"Claude":"Claude key missing"}${d.brain.backup?" · Groq backup ready":""} · remembers ${d.counts.memories} things</span></div></div>`;
+    `<div class="srow"><span class="app" style="background:#d97757">AI</span><div><b>Brain</b><span>${d.brain.claude?"Claude"+(d.brain.backup?" · Groq backup ready":""):d.brain.backup?"Groq (free)":"No AI key yet: add GROQ_API_KEY"} · remembers ${d.counts.memories} things</span></div></div>`;
   $("#log").innerHTML=d.activity.length?d.activity.map(a=>`<div class="item"><span style="width:70px;flex:none;font-variant-numeric:tabular-nums">${esc(a.time)}</span><b>${esc(a.text)}</b></div>`).join(""):`<p class="empty">Nothing yet.</p>`;
   const c=d.cost;
   $("#money").innerHTML=`৳${c.total.toLocaleString()} <small>this month</small>`;
-  $("#stack").innerHTML=c.items.filter(i=>i.bdt).map(i=>`<i style="width:${Math.min(100,i.bdt/c.budget*100)}%;background:${i.color}"></i>`).join("");
-  $("#budget").textContent=c.left>=0?`৳${c.left.toLocaleString()} left of your ৳${c.budget.toLocaleString()} budget`:`৳${(-c.left).toLocaleString()} over your ৳${c.budget.toLocaleString()} budget`;
+  $("#stack").innerHTML=c.items.filter(i=>i.bdt).map(i=>`<i style="width:${Math.min(100,i.bdt/(c.budget||c.total||1)*100)}%;background:${i.color}"></i>`).join("");
+  $("#budget").textContent=c.total===0?"Free mode: ৳0 this month":!c.budget?`৳${c.total.toLocaleString()} this month`:c.left>=0?`৳${c.left.toLocaleString()} left of your ৳${c.budget.toLocaleString()} budget`:`৳${(-c.left).toLocaleString()} over your ৳${c.budget.toLocaleString()} budget`;
   $("#legend").innerHTML=c.items.map(i=>`<span><em style="background:${i.color}"></em>${esc(i.label)}</span><span>৳${i.bdt.toLocaleString()}</span>`).join("");
   const on=d.connections.filter(x=>x.enabled).length;
   $("#status").innerHTML=`<i></i>Online · watching ${on} source${on===1?"":"s"} · ${d.counts.reminders_open} reminder${d.counts.reminders_open===1?"":"s"}`;

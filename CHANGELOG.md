@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0
+- Free mode (৳0 a month): Groq's free model is now a full brain with every tool (reminders, memory, Gmail, calendar), not just a backup.
+- Background jobs use a smaller free model so chatting keeps its own quota; short waits and a friendly message when the free limit is reached.
+- `.env.example` is set up for free mode by default; Claude and OpenAI are optional upgrades.
+- Free 24/7 hosting guide: Oracle Cloud Always Free + DuckDNS.
+- Cost card shows "Free mode: ৳0".
+
 ## 2.1.0
 - Tap Bob's photo to talk; he listens and answers out loud.
 - Voice works on phones: sound is unlocked on the first tap, and the browser's voice reads the reply if the server voice can't play.
