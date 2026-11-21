@@ -1,0 +1,20 @@
+# Changelog
+
+## 2.1.0
+- Tap Bob's photo to talk; he listens and answers out loud.
+- Voice works on phones: sound is unlocked on the first tap, and the browser's voice reads the reply if the server voice can't play.
+- Clear help when the microphone is blocked.
+- Login lockout after 5 wrong passwords; changing the password logs out every device.
+- Refuses to go online with sample secrets.
+- Security headers, friendly error responses, and a health check that also tests the database.
+- Docker image runs as a non-root user with a built-in health check; log rotation.
+- GitHub Actions: lint, tests, JavaScript check and Docker build on every push.
+
+## 2.0.0
+- Reminders with date, time, repeat, notes and importance; alerts on the website, Telegram, WhatsApp and phone.
+- Night report, part by part, saved to Reports.
+- Memory: learns from conversations; view and edit on the Memory page.
+- Natural OpenAI voice; replies in English or Bangla to match how you speak.
+
+## 1.0.0
+- First version: Gmail, Calendar, weather, bKash tracking, Telegram, dashboard and voice chat.

@@ -1,5 +1,5 @@
 /* Lets Mr. Bob install like an app and open even with a weak connection. */
-const CACHE = "mrbob-v4";
+const CACHE = "mrbob-v5";
 const SHELL = ["/", "/assets/style.css", "/assets/app.js", "/assets/cat.js", "/assets/icon.svg", "/assets/bob-face.jpg", "/assets/bob.jpg", "/manifest.webmanifest"];
 
 self.addEventListener("install", e => {

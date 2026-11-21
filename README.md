@@ -2,6 +2,8 @@
 
 **A personal AI agent. A Project Aethrix Work.**
 
+![CI](https://github.com/Jonayed100/Mr.Bob-Ai-Agent/actions/workflows/ci.yml/badge.svg) ![Version](https://img.shields.io/badge/version-2.1.0-e0142f) ![Python](https://img.shields.io/badge/python-3.12-1d1d1f)
+
 Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail and Google Calendar, watches the weather and air quality in Dhaka, reminds you of things, and tells you what matters on Telegram and on his own web dashboard. You can talk to him by voice or text in **English, বাংলা or Banglish**, and he answers in the same style, out loud.
 
 ---
@@ -16,8 +18,9 @@ Mr. Bob is your **friend and personal manager**. The website is the main home; T
 | **Night report** | Say **“Hey Mr. Bob, tell me about my important tasks”** (or *“আমার আজকের রিপোর্ট দাও”*). He goes through your day **part by part**, most urgent first, and explains each one: what it is, why it matters, what to do and by when. Important parts are marked. Every night at 9:30 PM he does this by himself too. |
 | **Reports** | Every briefing is saved in the **Reports** section of the website, one per day, so you can read or listen again later. The night report is also sent to Telegram and WhatsApp with a link. |
 | **Memory** | Talk to him like a friend. He **remembers** people, dates, plans, goals and what you like, and uses it naturally later. See and edit everything he remembers in the **Memory** section. |
+| **Talk to him** | **Tap Bob's photo and talk.** He listens, and when you stop he answers out loud. Tap again to keep talking. |
 | **Language** | Speak English, he answers in English. Speak Bangla, he answers in Bangla. Both in voice. |
-| **Natural voice** | An expressive, human-sounding voice (OpenAI) that speaks warmly and calmly, with a native Bangladeshi voice for Bangla. Free voices are the automatic backup. |
+| **Natural voice** | An expressive, human-sounding voice (OpenAI) that speaks warmly and calmly, with a native Bangladeshi voice for Bangla. Free voices are the automatic backup, and if no voice can reach the phone, the browser's own voice reads the reply so he is never silent. |
 | **Gmail** | Checks every 10 minutes. Keyword rules sort most mail for free; only unclear emails go to Claude. Important ones are flagged and sent to you. He can save draft replies (never sends). |
 | **WhatsApp & Telegram** | Alerts, reminders and the night report arrive there. Chat by text or voice notes; send `/report` on Telegram for tonight's report. |
 | **Calendar, weather, bKash** | Calendar heads-up 30 minutes before events, rain and air-quality warnings, bKash money in/out from SMS. |
@@ -31,7 +34,7 @@ Phone / browser ──► Dashboard (HTML, CSS, JS) ──► FastAPI backend
 Telegram ─────────────────────────────────────────►    │
                                                        ├─ Brain: Claude (tools) → backup: Groq free tier
                                                        ├─ Ears: OpenAI speech-to-text → backup: Groq Whisper
-                                                       ├─ Voice: Microsoft Edge neural voices (free, has Bangla)
+                                                       ├─ Voice: OpenAI natural voice → backup: Edge neural voices (has Bangla)
                                                        ├─ Gmail + Google Calendar (OAuth)
                                                        ├─ Weather + air quality (Open-Meteo)
                                                        ├─ Scheduler (APScheduler) for checks and briefings
@@ -44,6 +47,8 @@ mr-bob/
 │  ├─ main.py            app start-up: database, scheduler, Telegram bot, dashboard
 │  ├─ api.py             all /api routes used by the dashboard
 │  ├─ config.py          settings from .env
+│  ├─ security.py        login sessions (tied to your password)
+│  ├─ ratelimit.py       locks out password guessing
 │  ├─ models.py          database tables
 │  ├─ agent/             brain (Claude + backup), tools, prompts, language and briefing detection
 │  ├─ integrations/      Gmail, Calendar, Google sign-in, weather, Telegram
@@ -54,6 +59,7 @@ mr-bob/
 ├─ frontend/             the Liquid Glass dashboard and Mr. Bob's photo
 ├─ mobile/               the Android/iPhone app (React Native + Expo), see mobile/README.md
 ├─ tests/                unit tests
+├─ .github/workflows/    CI: lint, tests, JavaScript check and Docker build on every push
 ├─ Dockerfile, docker-compose.yml, Caddyfile
 └─ .env.example          every setting, explained
 ```
@@ -175,6 +181,7 @@ nano .env        # paste your keys, then set:
                  #   PUBLIC_URL=https://bob.yourdomain.com
                  #   DOMAIN=bob.yourdomain.com
                  #   a strong DASHBOARD_PASSWORD and SECRET_KEY
+mkdir -p data && chown -R 1000:1000 data    # Mr. Bob runs as a normal user, so he must own his data folder
 docker compose up -d --build
 ```
 
@@ -185,12 +192,17 @@ What happens:
 
 Useful commands:
 ```bash
+docker compose ps               # "healthy" means Mr. Bob and his database are fine
+curl -s https://bob.yourdomain.com/health      # {"ok": true, "database": "up", ...}
 docker compose logs -f bob      # watch what Mr. Bob is doing
 docker compose restart bob      # after changing .env
 git pull && docker compose up -d --build    # update to the newest code
 ```
 
-Your data lives in the `data/` folder on the server. Back it up now and then.
+Your data lives in the `data/` folder on the server. Back it up now and then:
+```bash
+cp data/mrbob.db ~/mrbob-backup-$(date +%F).db
+```
 
 ### 4d. Put him on your phone's home screen
 Open the dashboard in your phone's browser → **Share / menu → Add to Home Screen**. He opens full-screen like an app, and the mic works because the site is HTTPS.
@@ -261,6 +273,15 @@ All in `.env` (restart after changing):
 - `CITY`, `LATITUDE`, `LONGITUDE`: for weather.
 - `STT_MODEL`: if OpenAI retires a speech model, put the new name here.
 
+## Security
+
+- **Strong secrets are required online.** If `PUBLIC_URL` is `https://…` and the password or `SECRET_KEY` is still the sample (or the key is shorter than 32 characters), Mr. Bob refuses to start.
+- **Password guessing is blocked.** 5 wrong passwords from one address locks it out for 15 minutes.
+- **Changing `DASHBOARD_PASSWORD` logs out every device**, including any you lost.
+- **Only you.** Telegram and WhatsApp messages from any other number are ignored; the WhatsApp webhook checks Meta's signature; the SMS webhook needs its token.
+- **Safe defaults.** Security headers on every page, no API docs exposed, HTTPS through Caddy, the app runs as a normal (non-root) user, and passwords, OTPs and card numbers are never saved to memory.
+- **Never commit `.env`.** It is in `.gitignore`.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -268,7 +289,10 @@ All in `.env` (restart after changing):
 | Dashboard says "Can't reach Mr. Bob" | `docker compose logs bob` and look for the error. Usually a typo in `.env`. |
 | Google says `redirect_uri_mismatch` | The URI in Google Cloud must exactly equal `PUBLIC_URL` + `/api/google/callback`. |
 | Gmail stopped after a week | The Google app is still in Testing mode. Publish it (Step 1f), then reconnect. |
-| Mic button missing | The page must be HTTPS (or localhost), and the browser must allow the microphone. |
+| He can't hear me | The page must be HTTPS (or localhost). Tap the lock icon in the address bar → allow **Microphone**, then tap Bob again. |
+| No sound on iPhone | Turn off silent mode. Tap anywhere once after opening the page; phones only allow sound after a tap. |
+| Login says "Too many wrong tries" | Wait 15 minutes, or restart Mr. Bob (`docker compose restart bob`). |
+| `docker compose ps` shows unhealthy | `docker compose logs bob`. Often the `data/` folder isn't owned by user 1000 (see Step 4c). |
 | Telegram silent | Send `/start` and share your number again; check `OWNER_PHONE` and that Telegram is on in Settings. |
 | No WhatsApp alerts | Check `CALLMEBOT_APIKEY` and `OWNER_PHONE`; redo the CallMeBot activation message. |
 | bKash card empty | Check the forwarder app's URL and token; `docker compose logs bob` shows each `/api/sms` call. |

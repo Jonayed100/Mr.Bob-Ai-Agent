@@ -7,6 +7,11 @@ services:
       - ./data:/app/data
     expose:
       - "8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Caddy gives the dashboard free, automatic HTTPS (needed for the microphone)
   caddy:
@@ -22,4 +27,5 @@ services:
       - ./caddy_data:/data
       - ./caddy_config:/config
     depends_on:
-      - bob
+      bob:
+        condition: service_healthy

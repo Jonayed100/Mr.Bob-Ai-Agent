@@ -301,3 +301,6 @@ select.field{appearance:none;-webkit-appearance:none;background-image:linear-gra
 .voice.briefing .vstage{height:min(24vh,200px)}
 .voice.briefing .bobcard{width:min(230px,62%)!important;height:auto}
 .voice.briefing .vstate{margin-top:4px}
+
+/* anything marked hidden stays hidden, whatever layout it normally has */
+[hidden]{display:none!important}

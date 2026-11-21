@@ -17,7 +17,8 @@ from .config import Settings, get_settings
 from .db import get_db
 from .integrations import google_auth
 from .models import Activity, Connection, Memory, Message, Reminder, Report, Suggestion, kv_get, kv_set
-from .security import COOKIE, MAX_AGE, make_token, password_ok, require_login
+from .ratelimit import login_guard
+from .security import COOKIE, MAX_AGE, client_ip, make_token, password_ok, require_login
 from .services import briefing, costs, debrief, memory, money, reminder_jobs, snapshot
 from .services.reminders import PRIORITIES, REPEATS, clean_choice
 from .services.notify import telegram_chat
@@ -29,17 +30,25 @@ from .voice import audio_cache, stt, tts
 router = APIRouter(prefix="/api")
 auth = [Depends(require_login)]
 LANGS = {"auto", "english", "bangla", "banglish"}
+MAX_VOICE_BYTES = 8 * 1024 * 1024  # about 8 MB, far more than a one-minute voice note
 
 
 # ---------- login ----------
 class LoginIn(BaseModel):
-    password: str
+    password: str = Field(max_length=200)
 
 
 @router.post("/login")
-def login(body: LoginIn, response: Response, settings: Settings = Depends(get_settings)):
+def login(body: LoginIn, request: Request, response: Response, settings: Settings = Depends(get_settings)):
+    ip = client_ip(request)
+    wait = login_guard.retry_after(ip)
+    if wait:
+        minutes = max(1, round(wait / 60))
+        raise HTTPException(429, f"Too many wrong tries. Try again in {minutes} min.", headers={"Retry-After": str(wait)})
     if not password_ok(body.password, settings):
+        login_guard.failed(ip)
         raise HTTPException(401, "Wrong password")
+    login_guard.succeeded(ip)
     response.set_cookie(
         COOKIE, make_token(settings), max_age=MAX_AGE, httponly=True, samesite="lax",
         secure=settings.public_url.startswith("https://"),
@@ -163,7 +172,9 @@ async def voice(
     language: str = Form("auto"),
     db: Session = Depends(get_db),
 ):
-    data = await audio.read()
+    data = await audio.read(MAX_VOICE_BYTES + 1)
+    if len(data) > MAX_VOICE_BYTES:
+        raise HTTPException(413, "That recording is too long. Keep it under a minute.")
     if len(data) < 800:
         raise HTTPException(400, "That recording was too short")
     language = _lang(db, language)

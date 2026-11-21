@@ -12,7 +12,7 @@ from ..agent.prompts import IMPORTANCE_PROMPT
 from ..config import get_settings
 from ..integrations import gcalendar, gmail, google_auth
 from ..models import Alert, is_enabled, kv_get, kv_set
-from ..timeutil import hhmm, now_local, now_utc, to_utc
+from ..timeutil import hhmm, now_local
 from .activity import record
 from .importance import clamp, rule_score
 from .notify import notify

@@ -203,7 +203,7 @@ $("#repDetail").addEventListener("click",async e=>{
     const btn=$("#repPlay");if(btn.dataset.playing){delete btn.dataset.playing;stopAudio();btn.lastChild.textContent="Listen";return}
     btn.dataset.playing="1";btn.lastChild.textContent="Stop";
     for(const el of $$(".rpart")){if(!btn.dataset.playing)break;const p=openReport.parts[+el.dataset.i];$$(".rpart").forEach(x=>x.classList.toggle("playing",x===el));el.scrollIntoView({block:"nearest",behavior:reduce?"auto":"smooth"});
-      try{const a=await post("/tts",{text:`${p.title}. ${p.text}`,language:openReport.language});if(a.audio&&btn.dataset.playing)await play(a.audio,false)}catch(_){break}}
+      try{const a=await post("/tts",{text:`${p.title}. ${p.text}`,language:openReport.language});if(btn.dataset.playing)await speakReply(a.audio,`${p.title}. ${p.text}`,false)}catch(_){break}}
     $$(".rpart").forEach(x=>x.classList.remove("playing"));delete btn.dataset.playing;if(document.contains(btn))btn.lastChild.textContent="Listen";
   }
 });
@@ -234,7 +234,7 @@ async function sendText(text,{speak=false}={}){
     busy=false;
     if(r.mode==="briefing"){b.textContent=r.reply||"Here is your report.";await runBriefing(r);return}
     b.textContent=r.reply;say(r.reply);$("#vreply").textContent=r.reply;if(cat)cat.hop(0);
-    if(speak&&r.audio)await play(r.audio);else setState("idle");load();
+    if(speak)await speakReply(r.audio,r.reply);else setState("idle");load();
     if(handsFree)setTimeout(()=>{if(!busy)closeVoice()},1800)}
   catch(e){b.textContent=e.message==="login"?"Please log in again.":"Sorry, something went wrong: "+e.message;busy=false;setState("idle")}
 }
@@ -242,10 +242,38 @@ $("#form").addEventListener("submit",e=>{e.preventDefault();const v=$("#inp").va
 $("#chips").addEventListener("click",e=>{const b=e.target.closest("button");if(b)sendText(b.textContent)});
 
 /* ================= audio ================= */
-let player=null,playDone=null;
-function play(b64,setSpeaking=true){return new Promise(res=>{stopAudio();player=new Audio("data:audio/mpeg;base64,"+b64);playDone=res;if(setSpeaking)setState("speaking");
-  const end=()=>{if(playDone===res){playDone=null;if(setSpeaking&&!brief)setState("idle");res()}};player.onended=player.onerror=end;player.play().catch(end)})}
-function stopAudio(){if(player){player.pause();player=null}if(playDone){const r=playDone;playDone=null;r()}}
+/* One audio element, reused for every reply. Phones only let a page play sound
+   after a tap, so the first tap "unlocks" it; later replies can then play by themselves. */
+const SILENT="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+const player=new Audio();player.preload="auto";
+let playDone=null,unlocked=false,usingBrowserVoice=false;
+function unlockAudio(){if(unlocked)return;unlocked=true;
+  try{player.src=SILENT;player.play().catch(()=>{})}catch(_){}
+  try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}}catch(_){}}
+addEventListener("pointerdown",unlockAudio,{capture:true,once:true});
+addEventListener("keydown",unlockAudio,{capture:true,once:true});
+
+function play(b64,setSpeaking=true,fallbackText=""){return new Promise(res=>{stopAudio();playDone=res;if(setSpeaking)setState("speaking");
+  const end=()=>{if(playDone===res){playDone=null;player.onended=player.onerror=null;if(setSpeaking&&!brief)setState("idle");res()}};
+  player.onended=end;player.onerror=()=>{if(fallbackText&&playDone===res){playDone=null;browserSay(fallbackText,setSpeaking).then(res)}else end()};
+  player.src="data:audio/mpeg;base64,"+b64;
+  player.play().catch(()=>{if(fallbackText&&playDone===res){playDone=null;browserSay(fallbackText,setSpeaking).then(res)}else end()})})}
+
+/* Backup voice: the browser's own speech, used only if Mr. Bob's server voice can't be played. */
+function browserSay(text,setSpeaking=true){return new Promise(res=>{
+  if(!text||!window.speechSynthesis){res();return}
+  try{speechSynthesis.cancel();const bn=/[\u0980-\u09FF]/.test(text),voices=speechSynthesis.getVoices();
+    const u=new SpeechSynthesisUtterance(text.slice(0,1500));u.lang=bn?"bn-BD":"en-GB";
+    const v=voices.find(x=>x.lang&&x.lang.toLowerCase().startsWith(bn?"bn":"en"));if(v)u.voice=v;
+    usingBrowserVoice=true;if(setSpeaking)setState("speaking");
+    const t=setTimeout(done,Math.min(60000,3000+text.length*90));
+    function done(){clearTimeout(t);if(!usingBrowserVoice)return;usingBrowserVoice=false;if(setSpeaking&&!brief)setState("idle");res()}
+    u.onend=u.onerror=done;playDone=done;speechSynthesis.speak(u)}catch(_){res()}})}
+
+/* Say a reply out loud: Mr. Bob's natural voice if the server sent it, otherwise the backup voice. */
+function speakReply(audio,text,setSpeaking=true){return audio?play(audio,setSpeaking,text):browserSay(text,setSpeaking)}
+function stopAudio(){try{player.pause()}catch(_){}if(usingBrowserVoice){usingBrowserVoice=false;try{speechSynthesis.cancel()}catch(_){}}
+  if(playDone){const r=playDone;playDone=null;r()}}
 
 /* ================= voice screen ================= */
 const voice=$("#voice"),stateText={idle:"Tap and speak",listening:"Listening…",thinking:"Thinking…",speaking:"Mr. Bob is speaking"};
@@ -259,7 +287,10 @@ async function listen(){
   if(rec&&rec.state==="recording"){rec.stop();return}
   stopAudio();$("#vsaid").textContent="";$("#vreply").textContent="";
   try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
-  catch(e){toast("Microphone permission was blocked");voice.classList.add("nomic");return}
+  catch(e){setState("idle");voice.classList.add("nomic");
+    $("#vhint").textContent=e&&e.name==="NotFoundError"?"No microphone found. You can type to Mr. Bob below.":"Mr. Bob can't hear you yet. Tap the lock icon in the address bar, allow the microphone, then tap Bob again. Or type below.";
+    return}
+  voice.classList.remove("nomic");$("#vhint").textContent="Tap Bob and talk. English or বাংলা.";
   const type=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
   rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);chunks=[];startedAt=performance.now();
   rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
@@ -286,7 +317,7 @@ async function onRecorded(){
     if(r.heard)bubble("me",r.heard);
     if(r.mode==="briefing"){bubble("bob",r.reply||"Here is your report.");await runBriefing(r);return}
     $("#vreply").textContent=r.reply;bubble("bob",r.reply);say(r.reply);if(cat)cat.hop(0);
-    if(r.audio)await play(r.audio);else setState("idle");load();
+    await speakReply(r.audio,r.reply);load();
     if(handsFree)setTimeout(()=>{if(!busy&&!(rec&&rec.state==="recording"))closeVoice()},1800)}
   catch(e){busy=false;setState("idle");$("#vreply").textContent=e.message==="login"?"Please log in again.":"Sorry: "+e.message}
 }
@@ -317,10 +348,10 @@ async function runBriefing(r){
   const b={parts:rep.parts,idx:-1,stopped:false,paused:false,report:rep};brief=b;
   $("#bprog").innerHTML=rep.parts.map(p=>`<i class="${p.important?"bimp":""}"></i>`).join("");
   $("#bnum").textContent=rep.created||"Tonight";$("#btitle").textContent=rep.title;$("#btext").textContent=rep.summary;$("#bpart").classList.remove("important");
-  if(r.audio)await play(r.audio);else await wait(1500);
+  await speakReply(r.audio,rep.summary);
   while(brief===b&&!b.stopped&&b.idx<b.parts.length-1){
     b.idx++;showPart(b);const p=b.parts[b.idx];
-    if(p.audio)await play(p.audio);else await wait(Math.min(9000,1200+p.text.length*45));
+    await speakReply(p.audio,`${p.title}. ${p.text}`);
     while(brief===b&&b.paused&&!b.stopped)await wait(200);
   }
   if(brief===b&&!b.stopped){setState("idle");toast("Saved to Reports");$("#bnum").textContent="Finished · saved to Reports";load()}
@@ -331,7 +362,7 @@ function showPart(b){const p=b.parts[b.idx];
   $("#bpart").classList.toggle("important",!!p.important);if(cat)cat.hop(p.important?1:0)}
 $("#bNext").addEventListener("click",()=>{if(!brief)return;brief.paused=false;$("#bPause").textContent="Pause";stopAudio()});
 $("#bPause").addEventListener("click",()=>{if(!brief)return;brief.paused=!brief.paused;$("#bPause").textContent=brief.paused?"Resume":"Pause";
-  if(player){brief.paused?player.pause():player.play().catch(()=>{})}setState(brief.paused?"idle":"speaking")});
+  if(usingBrowserVoice){brief.paused?speechSynthesis.pause():speechSynthesis.resume()}else if(player.src&&playDone){brief.paused?player.pause():player.play().catch(()=>{})}setState(brief.paused?"idle":"speaking")});
 
 /* ================= reminder alerts (website) ================= */
 const shown=new Set();let dueQueue=[],dueOpen=null;
@@ -343,7 +374,7 @@ async function nextDue(){
   dueOpen=dueQueue.shift()||null;if(!dueOpen){$("#due").hidden=true;return}
   const r=dueOpen;$("#dueText").textContent=r.text;$("#dueNotes").textContent=r.notes||"";$("#dueWhen").textContent=(r.priority==="important"?"⭐ Important · ":"")+(r.when||"now");$("#due").hidden=false;
   if(cat)cat.hop(2);
-  try{const a=await post("/tts",{text:`Reminder. ${r.text}. ${r.notes||""}`,language:"auto"});if(a.audio&&dueOpen===r)await play(a.audio,false)}catch(_){}
+  try{const a=await post("/tts",{text:`Reminder. ${r.text}. ${r.notes||""}`,language:"auto"});if(dueOpen===r)await speakReply(a.audio,`Reminder. ${r.text}`,false)}catch(_){}
 }
 async function dueAction(kind){const r=dueOpen;if(!r)return;dueOpen=null;stopAudio();
   try{if(kind==="done")await patch(`/reminders/${r.id}`,{done:true});else if(kind==="snooze")await post(`/reminders/${r.id}/snooze`,{minutes:10});else await post(`/reminders/${r.id}/seen`);}catch(_){}

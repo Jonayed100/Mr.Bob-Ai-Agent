@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt pytest ruff
+      - name: Lint
+        run: ruff check backend tests --select F,E9
+      - name: Tests
+        run: pytest -q
+      - name: App starts
+        env:
+          DATABASE_URL: sqlite:///./ci.db
+        run: |
+          mkdir -p data
+          cd backend && python -c "from app.main import app; print('routes:', len(app.routes))"
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check JavaScript
+        run: for f in frontend/assets/*.js frontend/sw.js; do node --check "$f"; done
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t mr-bob .
