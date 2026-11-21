@@ -78,11 +78,6 @@ $("#conns").addEventListener("click",async e=>{const b=e.target.closest(".sw");i
 $("#accounts").addEventListener("click",async e=>{if(e.target.id==="gOff"){await post("/google/disconnect");load()}if(e.target.id==="wakeSw"){setWake(!wakeOn);e.target.setAttribute("aria-checked",wakeOn)}});
 $("#briefNow").addEventListener("click",async()=>{toast("Sending your briefing to Telegram…");const r=await post("/briefing/morning").catch(e=>({text:""}));if(r.text){bubble("bob",r.text)}toast(r.text?"Briefing sent":"Couldn't make the briefing")});
 
-/* photos tilt with the pointer */
-const stageEl=$("#stage");
-addEventListener("pointermove",e=>{if(reduce)return;stageEl.style.setProperty("--px",(e.clientX/innerWidth*2-1).toFixed(3));stageEl.style.setProperty("--py",(e.clientY/innerHeight*2-1).toFixed(3))},{passive:true});
-addEventListener("scroll",()=>{if(!reduce)stageEl.style.setProperty("--py",Math.max(-1,Math.min(1,scrollY/400)).toFixed(3))},{passive:true});
-
 /* glass shine follows the pointer */
 addEventListener("pointermove",e=>{const g=e.target.closest&&e.target.closest(".glass");if(!g)return;const r=g.getBoundingClientRect();g.style.setProperty("--mx",(e.clientX-r.left)+"px");g.style.setProperty("--my",(e.clientY-r.top)+"px")},{passive:true});
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}}),{threshold:.08});

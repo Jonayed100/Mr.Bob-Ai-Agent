@@ -23,12 +23,12 @@ Mr. Bob is a cute butler cat who keeps an eye on your day. He reads your Gmail a
 | Phone app | Install the dashboard on your home screen; it opens full-screen and works on weak connections. |
 | 12-hour time | Every time is shown and spoken as 12-hour (3:00 PM). |
 | Email drafts | He can write a Gmail draft for you. He never sends email or pays for anything himself. |
-| Dashboard | iOS 26 "Liquid Glass" style, with a 3D cat, today's widgets, chat, connections, activity log and a live monthly cost card. Can be added to your phone's home screen. |
+| Dashboard | iOS 26 "Liquid Glass" style, with Mr. Bob's photo as a living 3D card, today's widgets, chat, connections, activity log and a live monthly cost card. Can be added to your phone's home screen. |
 
 ## How it is built
 
 ```
-Phone / browser ──► Dashboard (HTML + Three.js) ──► FastAPI backend
+Phone / browser ──► Dashboard (HTML, CSS, JS) ──► FastAPI backend
 Telegram ─────────────────────────────────────────►    │
                                                        ├─ Brain: Claude (tools) → backup: Groq free tier
                                                        ├─ Ears: OpenAI speech-to-text → backup: Groq Whisper
@@ -51,7 +51,7 @@ mr-bob/
 │  ├─ voice/             speech-to-text and text-to-speech
 │  ├─ services/          email importance, checks, briefings, suggestions, costs
 │  └─ worker/            scheduler and Telegram listener
-├─ frontend/             the Liquid Glass dashboard and the 3D cat
+├─ frontend/             the Liquid Glass dashboard and Mr. Bob's photo
 ├─ tests/                unit tests
 ├─ Dockerfile, docker-compose.yml, Caddyfile
 └─ .env.example          every setting, explained

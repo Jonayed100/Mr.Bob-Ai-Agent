@@ -1,6 +1,6 @@
 /* Lets Mr. Bob install like an app and open even with a weak connection. */
-const CACHE = "mrbob-v2";
-const SHELL = ["/", "/assets/style.css", "/assets/app.js", "/assets/cat.js", "/assets/icon.svg", "/assets/bob-face.jpg", "/assets/bob-photo-1.jpg", "/assets/bob-photo-2.jpg", "/manifest.webmanifest"];
+const CACHE = "mrbob-v3";
+const SHELL = ["/", "/assets/style.css", "/assets/app.js", "/assets/cat.js", "/assets/icon.svg", "/assets/bob-face.jpg", "/assets/bob.jpg", "/manifest.webmanifest"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

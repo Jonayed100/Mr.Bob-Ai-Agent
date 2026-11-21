@@ -46,7 +46,6 @@ nav b{font-weight:600;font-size:15px;white-space:nowrap}nav span{font-size:13px;
 .stage{position:relative;height:clamp(320px,44vw,440px);margin:6px auto 0;max-width:560px;cursor:pointer}
 .stage canvas,.vstage canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
 .say{position:absolute;top:2%;left:50%;transform:translateX(-50%);max-width:min(88%,380px);width:max-content;padding:11px 18px;border-radius:22px;font-size:15px;z-index:2;pointer-events:none}
-.fallback{position:absolute;inset:22% 30%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#ffe1e6 60%,#ffc2cc)}
 .ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:10px;min-height:54px;padding:0 24px 0 9px;border-radius:999px;font-size:17px;font-weight:600}
 .pill.plain{padding:0 22px;font-weight:500}
@@ -186,17 +185,29 @@ h2.sub{font-size:22px;margin-top:10px;display:flex;align-items:center;gap:10px}
 .amt.in{color:var(--green)}.amt.out{color:var(--ink)}
 .log .item>span:first-child{width:70px!important}
 
-/* ---------- Mr. Bob's photos, floating in 3D around him ---------- */
-.stage{perspective:900px}
-.stage canvas{z-index:1}
-.photo{position:absolute;margin:0;width:min(34%,190px);aspect-ratio:3/4;padding:7px;border-radius:22px;z-index:0;
-  transform-style:preserve-3d;transition:transform .6s var(--spring);will-change:transform}
-.photo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:16px;box-shadow:0 10px 30px rgba(80,20,40,.25)}
-.photo.p1{left:0;top:16%;transform:rotateY(calc(24deg + var(--px,0)*10deg)) rotateX(calc(var(--py,0)*-8deg)) rotateZ(-7deg) translateZ(-40px);animation:bob1 7s ease-in-out infinite}
-.photo.p2{right:0;top:30%;transform:rotateY(calc(-24deg + var(--px,0)*10deg)) rotateX(calc(var(--py,0)*-8deg)) rotateZ(6deg) translateZ(-40px);animation:bob2 8s ease-in-out infinite}
-@keyframes bob1{50%{translate:0 -12px}}
-@keyframes bob2{50%{translate:0 10px}}
+/* ---------- Mr. Bob: his photo, alive ---------- */
+.stage{perspective:1000px}
+.bobpic{position:absolute;inset:56px 0 0;display:grid;place-items:center;cursor:pointer;z-index:1;-webkit-tap-highlight-color:transparent}
+.vstage .bobpic{inset:0}
+.bobglow{position:absolute;width:72%;aspect-ratio:1;border-radius:50%;background:radial-gradient(closest-side,rgba(255,110,135,.55),transparent);filter:blur(24px);transition:scale .5s var(--spring),opacity .4s}
+.bobcard{width:min(94%,500px);aspect-ratio:4/3;padding:8px;border-radius:34px;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transform-style:preserve-3d;transition:transform .6s var(--spring),scale .5s var(--spring);animation:float 5s ease-in-out infinite}
+.vstage .bobcard{width:min(88%,420px)}
+.bobcard img{display:block;width:100%;height:100%;object-fit:cover;border-radius:27px;user-select:none;box-shadow:0 14px 34px rgba(80,20,40,.22)}
+@keyframes float{50%{translate:0 -8px}}
+.bobpic[data-state=listening] .bobcard{scale:1.04}
+.bobpic[data-state=listening] .bobglow{scale:1.25;animation:pulse 1s ease-in-out infinite}
+.bobpic[data-state=thinking] .bobcard{animation:think 1.6s ease-in-out infinite}
+.bobpic[data-state=speaking] .bobcard{animation:talk .45s ease-in-out infinite}
+.bobpic[data-state=speaking] .bobglow{scale:1.3;opacity:1}
+@keyframes pulse{50%{opacity:.55}}
+@keyframes think{25%{rotate:-2deg}75%{rotate:2deg}}
+@keyframes talk{50%{scale:1.025}}
+.bobpic.hop .bobcard{animation:hop .65s var(--spring)}
+@keyframes hop{35%{translate:0 -26px;scale:1.04 .97}70%{translate:0 0;scale:1.03 .96}}
+.heart{position:absolute;bottom:38%;z-index:2;color:#ff3d64;font-size:30px;pointer-events:none;text-shadow:0 3px 8px rgba(120,0,30,.25);animation:heart 1.6s ease-out forwards}
+@keyframes heart{to{translate:0 -170px;scale:1.5;opacity:0}}
 .av,.av.big{background:url(/assets/bob-face.jpg) center/cover!important}
-@media(max-width:600px){.photo{width:30%}.photo.p1{top:22%}.photo.p2{top:38%}}
-@media(prefers-reduced-motion:reduce){.photo{animation:none}}
-.fallback{inset:auto!important;left:50%!important;top:52%!important;transform:translate(-50%,-50%);width:min(52%,230px);aspect-ratio:1;border-radius:50%;background:url(/assets/bob-face.jpg) center/cover!important;box-shadow:0 0 0 6px rgba(255,255,255,.7),0 18px 40px rgba(224,20,47,.25)}
+@media(prefers-reduced-motion:reduce){.bobcard,.bobglow,.heart{animation:none!important}}
+#stage{height:auto}
+#stage>.say{position:relative;top:auto;left:auto;transform:none;margin:4px auto 0;display:block}
+#stage .bobpic{position:relative;inset:auto;padding:14px 0 24px}
