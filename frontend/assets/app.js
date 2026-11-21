@@ -227,7 +227,7 @@ const chat=$("#chat");
 function bubble(who,text){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;return d}
 async function loadMessages(){try{const ms=await api("/messages");chat.innerHTML="";ms.forEach(m=>bubble(m.role==="user"?"me":"bob",m.text));if(!ms.length)bubble("bob","Assalamu alaikum! Ami Mr. Bob, your friend and manager. Tell me anything, ask me to remind you, or ask about your important tasks.")}catch(e){}}
 function say(text){const s=$("#say");s.textContent=text.length>110?text.slice(0,107)+"…":text;s.dataset.locked="1";clearTimeout(say.t);say.t=setTimeout(()=>delete s.dataset.locked,60000)}
-if(cat)cat.onTap=line=>say(line);
+
 async function sendText(text,{speak=false}={}){
   if(busy||!text.trim())return;busy=true;bubble("me",text);const b=bubble("bob","…");setState("thinking");
   try{const r=await post("/chat",{text,language:lang,speak});
@@ -294,6 +294,7 @@ function showVoice(){stopWake();voice.hidden=false;document.body.style.overflow=
 function openVoice(){showVoice();endBriefingUI();if(canRecord)listen();else setTimeout(()=>$("#vinp").focus(),50)}
 function closeVoice(){if(rec&&rec.state==="recording"){rec.onstop=null;rec.stop();stream&&stream.getTracks().forEach(t=>t.stop());rec=null}
   if(brief)brief.stopped=true;brief=null;stopAudio();endBriefingUI();voice.hidden=true;document.body.style.overflow="";if(cat)cat.mount($("#stage"));if(!busy)setState("idle");handsFree=false;setTimeout(startWake,500)}
+if(cat)cat.onTap=()=>{if(voice.hidden)openVoice();else listen()};
 $("#talk").addEventListener("click",openVoice);$("#fab").addEventListener("click",openVoice);
 $("#vclose").addEventListener("click",closeVoice);$("#vmic").addEventListener("click",listen);
 addEventListener("keydown",e=>{if(e.key==="Escape"&&!voice.hidden)closeVoice()});
