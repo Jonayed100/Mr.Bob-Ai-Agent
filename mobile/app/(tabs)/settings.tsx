@@ -1,7 +1,7 @@
 import * as Linking from "expo-linking";
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { logout, post, serverUrl, taka } from "../../src/api";
+import { isDemo, logout, post, serverUrl, taka } from "../../src/api";
 import { AppIcon, brand, Glass, H2, Muted, Pill, Row } from "../../src/components/Glass";
 import { registerForPush } from "../../src/push";
 import { useSession } from "../../src/session";
@@ -129,7 +129,9 @@ export default function Settings() {
       <View style={{ gap: 10, marginTop: 26 }}>
         <Pill label="Send morning briefing now" onPress={briefing} />
         <Pill label="Log out" onPress={signOut} />
-        <Muted style={{ textAlign: "center", marginTop: 8 }}>Connected to {serverUrl().replace(/^https?:\/\//, "")}</Muted>
+        <Muted style={{ textAlign: "center", marginTop: 8 }}>
+          {isDemo() ? "Demo mode: sample data" : `Connected to ${serverUrl().replace(/^https?:\/\//, "")}`}
+        </Muted>
         <Muted style={{ textAlign: "center", fontSize: 12 }}>Mr. Bob · A Project Aethrix Work</Muted>
       </View>
     </ScrollView>

@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { post } from "./api";
+import { isDemo, post } from "./api";
 
 // show Mr. Bob's alerts even while the app is open
 Notifications.setNotificationHandler({
@@ -20,7 +20,7 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPush(): Promise<string | null> {
   try {
-    if (!Device.isDevice) return null;
+    if (!Device.isDevice || isDemo()) return null;
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "Mr. Bob alerts",

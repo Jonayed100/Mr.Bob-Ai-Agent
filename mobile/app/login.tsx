@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
-import { login } from "../src/api";
+import { login, startDemo } from "../src/api";
 import { Glass, Muted, Pill } from "../src/components/Glass";
 import { Wallpaper } from "../src/components/Wallpaper";
 import { useSession } from "../src/session";
@@ -63,6 +63,7 @@ export default function Login() {
             />
             {error ? <Text style={{ color: brand.red, textAlign: "center" }}>{error}</Text> : null}
             {busy ? <ActivityIndicator color={brand.red} style={{ height: 54 }} /> : <Pill label="Unlock" primary onPress={submit} />}
+            <Pill label="Try demo (no server needed)" onPress={async () => { await startDemo(); setSignedIn(true); }} />
           </View>
         </Glass>
       </KeyboardAvoidingView>

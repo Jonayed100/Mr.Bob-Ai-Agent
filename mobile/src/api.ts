@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { demoDashboard, demoReply } from "./demo";
 
 /** Talks to your Mr. Bob server. The address and login token are kept in the phone's secure storage. */
 
@@ -11,6 +12,16 @@ export async function loadSession(): Promise<boolean> {
   server = (await SecureStore.getItemAsync("server")) || "";
   token = (await SecureStore.getItemAsync("token")) || "";
   return Boolean(server && token);
+}
+
+export const DEMO = "demo";
+export const isDemo = () => server === DEMO;
+
+export async function startDemo() {
+  server = DEMO;
+  token = DEMO;
+  await SecureStore.setItemAsync("server", server);
+  await SecureStore.setItemAsync("token", token);
 }
 
 export function serverUrl() {
@@ -45,6 +56,7 @@ export async function logout() {
 }
 
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+  if (isDemo()) return demoApi(path, init) as T;
   const headers: Record<string, string> = { Authorization: `Bearer ${token}`, ...(init.headers as any) };
   if (init.body && typeof init.body === "string") headers["Content-Type"] = "application/json";
   const res = await fetch(server + "/api" + path, { ...init, headers });
@@ -65,6 +77,7 @@ export function chat(text: string, language: string, speak = false) {
 }
 
 export function sendVoice(uri: string, seconds: number, language: string) {
+  if (isDemo()) return Promise.resolve({ heard: "(demo) Ajke amar schedule ki?", ...demoReply("schedule") });
   const form = new FormData();
   const ext = uri.split(".").pop() || "m4a";
   form.append("audio", { uri, name: `voice.${ext}`, type: ext === "webm" ? "audio/webm" : "audio/m4a" } as any);
@@ -100,3 +113,30 @@ export type ChatMessage = { role: "user" | "assistant"; text: string; channel?: 
 
 export const taka = (x: number | null | undefined) =>
   x == null ? "—" : "৳" + Number(x).toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+/* ---------- demo mode: answers from sample data, no server needed ---------- */
+async function demoApi(path: string, init: RequestInit): Promise<unknown> {
+  await new Promise(r => setTimeout(r, 350));
+  const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+  if (path === "/dashboard") return demoDashboard;
+  if (path === "/messages") return [];
+  if (path === "/chat") return demoReply(body.text || "");
+  if (path === "/briefing/morning")
+    return { text: "Good morning! Ajke 24 degree, sondhay brishti hote pare. 3:00 PM e TechNest interview, 2:15 PM er moddhe ber hoye jeo. DESCO bill 25 tarikh e due." };
+  const rem = path.match(/^\/reminders\/(\d+)$/);
+  if (rem) {
+    const r = demoDashboard.reminders.find(x => x.id === Number(rem[1]));
+    if (r) r.done = body.done;
+  }
+  const fb = path.match(/^\/suggestions\/(\d+)\/feedback$/);
+  if (fb) {
+    const s = demoDashboard.suggestions.find(x => x.id === Number(fb[1]));
+    if (s) s.feedback = body.value;
+  }
+  const conn = path.match(/^\/connections\/(\w+)$/);
+  if (conn) {
+    const c = demoDashboard.connections.find(x => x.name === conn[1]);
+    if (c) c.enabled = body.enabled;
+  }
+  return { ok: true };
+}

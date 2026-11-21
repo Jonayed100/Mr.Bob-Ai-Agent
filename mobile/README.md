@@ -26,8 +26,10 @@ npx expo start
 What to expect:
 1. A QR code appears in the terminal.
 2. **Android:** open Expo Go and scan it. **iPhone:** scan it with the Camera app.
-3. The Mr. Bob login screen opens. Type your server address (for example `bob.yourdomain.com`) and your dashboard password.
-4. You're in. Pull down on Home to refresh.
+3. The Mr. Bob login screen opens. Either:
+   - tap **Try demo (no server needed)** to look around with sample data, or
+   - type your server address (for example `bob.yourdomain.com`) and your dashboard password.
+4. You're in. Pull down on Home to refresh. (To leave the demo: Settings → Log out.)
 
 > Testing before the server is online? Run the backend on your computer and use its local address, for example `http://192.168.0.105:8000`. The phone and computer must be on the same Wi-Fi.
 
